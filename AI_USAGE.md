@@ -132,3 +132,38 @@ Commits written with the AI carry a `Co-Authored-By: Claude` trailer.
   1. **Stack too deep:** `DeployCountersign.s.sol` failed to compile. Fixed by refactoring the script into a config struct, not by switching the compiler to `via-ir` (which would change how the audited contract compiles).
   2. **Missing npm script:** I ran `pnpm deploy:countersign` before adding it to package.json. My own grep filter hid the pnpm error, so the first "deploy" did nothing. I noticed it because `deployments/countersign-9800.json` was missing. A deploy window had already been opened (tx `EE139C4E…`); it was reused for the real deploy.
 - **MCP / tools used:** JSON-RPC `eth_call` (simulations run the real precompiles), receipts, `cast codesize` / `cast call` checks, REST bank and window reads. The official rules, prizes and FAQ pages were read through a web-fetch agent.
+
+### T8: M8 self-serve web app (27 Nov 2026)
+- **Asked:**
+  - Build the app so anyone with QoreX can use it, with no keys shared and no address collection.
+  - Builder's decisions: hosting later; officer = the builder's QoreX wallet; NAV via a free GitHub Actions cron with a dedicated attestor key.
+- **AI generated:** `app/` on the `viem-wagmi` template:
+  - `scripts/sync-contracts.mjs` copies addresses, the deploy block and ABIs from `contracts/`.
+  - `src/lib/qorex.ts`: direct `signArbitrary`, a coin-60 check via `RIPEMD160(SHA256(pubKey))`, and `MsgConvertCoin` through QoreX `signAndBroadcast`.
+  - `src/lib/terms.ts`: tradeId, share links, tickets, relay links.
+  - `src/lib/tx.ts`: simulate on the node before every write, decoded custom errors, QoreX and window refusals.
+  - `src/lib/reads.ts`:
+    - key status from the `0x…0a02` precompile
+    - trades, NAV and balances
+    - bank fUSD over the REST proxy, null when there is none
+    - blotter: chunked `TradeOpened` scan (the RPC allows at most 10,000 blocks per `eth_getLogs`), cached per browser
+    - settlement receipt lookup
+  - Pages:
+    - Get ready: checks with fixes, fUSD convert, demo-bond faucet claim
+    - New trade: decoded terms, the exact string to sign, the tradeId cross-checked against the contract, NAV band warning
+    - Trade: checklist, live "why it can't settle yet" preflight, affirm / exact approve + lock / officer approval / settle / reclaim, relay links for coin-118 signers, receipt
+    - Blotter
+  - `styles.css`: light and dark, readable at phone width.
+- **Verified:**
+  - `pnpm typecheck` clean, `vite build` ok.
+  - In a real browser (Playwright, no wallet), the blotter loads the 4 real trades from chain with the correct statuses (2 Settled, 2 Reclaimed).
+  - The trade page shows the real settlement receipt `0xf8bbb176…`. The readiness page renders guidance without a wallet.
+  - Not yet verified: the QoreX-driven flows (signing, EVM sends) need the human's wallet.
+- **Facts found and recorded in CLAUDE.md:**
+  - Block time ≈1.42 s (≈60,700 blocks/day).
+  - `eth_getLogs` is capped at 10,000 blocks per query.
+  - QoreX `getKey().algo` is always `"secp256k1"`.
+- **AI mistakes and how they were caught:**
+  1. **Relay party:** a relayed affirmation first guessed the signer as "whoever has not affirmed yet". That would have sent a buyer's signature as the seller's (`BadPqcSignature`). Caught on review; the party is now encoded in the link.
+  2. **NAV check on closed trades:** the trade page showed a red check for a settled trade (today's price is irrelevant after settlement) and said "no NAV" while still loading. Caught in the browser screenshot; fixed.
+- **MCP / tools used:** Playwright (browser screenshots and evaluate), JSON-RPC checks of the `eth_getLogs` limit and block time.

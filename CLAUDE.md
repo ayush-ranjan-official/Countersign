@@ -162,6 +162,11 @@ Anyone with QoreX must be able to use the hosted app end to end, with no address
 - **Hosting:** public HTTPS, plus a rewrite proxy for the REST API (it sends no CORS headers). The EVM RPC needs no proxy.
 - **Order:** the contract parts go into M1 before the Stage 1 audit; the app parts into M8. The builder asked to wait for S-2 (QoreX `signArbitrary` → `pqcVerify`) before any contract work, because in-app signing depends on it.
 
+**Decisions for the final deploy (builder, 27 Nov):**
+- **Officer:** the builder's QoreX wallet `qor1jk6gk3lxdv45s66hmyszl55yuavmfqpq692s4n` = `0x95B48b47e66b2B486b57D9202fd284E759b48020`. It is coin 118, so it signs in the app and anyone relays the approval.
+- **NAV:** a GitHub Actions cron (free for public repos) signs and posts hourly with a **dedicated ATTESTOR throwaway key**, held in GitHub Secrets and never the ISSUER key. Final `maxNavAge = 2 h`, to absorb scheduler delays.
+- **Hosting:** decided later. The app works on any static host, and degrades gracefully without the REST proxy.
+
 **NICE (only if time is left)**
 - **N1** Counterparty by @handle (`@qorechain/handles`).
 - **N2** Public receipt-verifier page.
@@ -306,6 +311,8 @@ struct Terms {
 - A window does **not** cap token amounts or existing approvals, and **approvals survive the window closing**.
 - **Measured 27 Nov (spike S-5):** a tx to an address outside `allowedTargets` is refused at admission, before it enters the mempool, and **does not consume a nonce**. The JSON-RPC error reads `the EVM authorisation window for qor1… does not admit this transaction: the window does not list 0x… as an allowed recipient` (error class "EVM authorisation window exhausted"). `eth_call` / `eth_estimateGas` need no window, so a simulation passes even for a tx the window will refuse.
 - **Fee market:** `min_gas_multiplier = 0.5` (`/cosmos/evm/feemarket/v1/params`). A tx is charged at least 50% of its gas limit, and the receipt's `gasUsed` shows that floor (a lock with a 1.5M limit reported exactly 750,000). Always set gas limits from `eth_estimateGas` (+25%), never a loose constant. Base fee 100 gwei, `eth_gasPrice` 112.5 gwei on 27 Nov.
+- **Block time (measured 27 Nov):** 10,000 blocks took 14,244 s, i.e. **≈1.42 s/block, ≈60,700 blocks/day**. A 600-block window lasts ≈14 min; the maximum of 17,280 blocks lasts ≈6.8 h.
+- **`eth_getLogs` is limited to 10,000 blocks per query** ("maximum [from, to] blocks distance: 10000"), so scan in chunks.
 - Scripts open windows with `openEvmWindowMsg({ sender, blocks, maxTxs, maxValue, allowedTargets })` from `@qorechain/sdk`. Read the state with `fetchEvmWindow` / `evmWindowStatus` and size windows with `evmWindowCost` (`@qorechain/evm`).
 
 **QoreX wallet (browser and mobile)**
@@ -315,6 +322,7 @@ struct Terms {
   - The result follows message-signing-v1. The ML-DSA signature is base64 in `pq.signature`; convert it to hex for the contract.
   - Verify off chain with `verifyMessageWithChain` from `@qorechain/qoresign/network`.
   - A fresh account has no registered key until its first transaction from QoreX.
+  - `getKey(chainId).algo` is always `"secp256k1"` (qorex-types). To tell a coin-60 account from a coin-118 one, compare the `qor1` bytes with `RIPEMD160(SHA256(pubKey))`: equal means the coin-118 key.
   - **Verified 27 Nov (spike S-2 PASS):** a real QoreX extension `signArbitrary` signature (coin-118 account) verifies through `pqcVerify` on testnet over `qorechain-msg-v1|qorechain-diana|<data>`. The result also carries Keplr-style `pub_key` / `signature` fields. The copied `integrate-qorex` skill and the 0.1.0 `qorex-types` docs still say signArbitrary is "not yet supported"; that is out of date for the native provider. Evidence: `docs/spikes/s2-qorex-signArbitrary.json`.
 - For testing on a phone, serve the app on a public HTTPS URL (the phone cannot reach localhost) and open it in QoreX's in-app browser with testnet enabled in developer mode.
 

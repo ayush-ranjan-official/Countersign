@@ -33,3 +33,6 @@ contracts/broadcast/**/dry-run/
 
 # plaintext trade tickets (QoreSeal seals them; never commit the plaintext)
 contracts/tickets/
+
+# browser automation artefacts
+.playwright-mcp/

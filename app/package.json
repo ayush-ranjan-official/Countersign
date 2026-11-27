@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "sync-contracts": "node scripts/sync-contracts.mjs"
   },
   "dependencies": {
     "@qorechain/evm": "^0.14.0",

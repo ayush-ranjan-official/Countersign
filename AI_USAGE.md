@@ -191,3 +191,21 @@ Commits written with the AI carry a `Co-Authored-By: Claude` trailer.
   1. **Window sizing:** `ensureWindow` used one number for both "txs needed" and "window size", so the poster would have reopened a tiny window almost every run. Caught on review; split into `txs` and `openTxs`.
   2. **Empty env var:** an empty `DEPLOYMENTS_DIR=` copied from `.env.example` would have made forge write deployment files to the filesystem root (forge auto-loads `.env`). Caught on review; empty now means the default.
 - **MCP / tools used:** `gh` (secrets and variables), JSON-RPC and `cast` checks of roles and exemptions.
+
+### T10: Verified as a new teammate from a fresh clone (27 Nov 2026)
+- **Asked:** (same request as T9) prove a teammate can use every feature with their own addresses.
+- **AI did:**
+  - Freshly cloned the public repo with `--recurse-submodules` into a scratch folder: `pnpm install`, `forge build`, `forge test` (55 passed).
+  - Ran `pnpm keygen` there: a brand-new set of 6 accounts, ISSUER `0x92AC…5044`.
+  - Funded that ISSUER from our ISSUER (12 QOR + 150 bank fUSD; this stands in for the teammate's own faucet claim, which needs a human dashboard sign-in).
+  - Then, from the clone only: `pnpm register ISSUER`, `pnpm fund` (smaller amounts), `pnpm register all`, `pnpm trade`.
+- **Results (real txs, rows in `docs/DEMO.md` marked "teammate clone, own keys"):**
+  - The clone recognised that the shared deployment's officer and attestor are not its own and used the **GitHub Actions NAV**.
+  - Its seller had 0 bonds and **claimed 100 from the faucet**; its buyer converted bank fUSD.
+  - It affirmed with ML-DSA-87, did exact approve + lock (0 allowance left), and **settled in one tx `0x8a1fc8b3…`**.
+  - `pnpm trade --large` was **refused before any transaction**, with guidance: the officer is the builder's QoreX.
+  - Earlier in T9, the nav-poster workflow posted a NAV from GitHub Actions (tx `0x52fcbd37…`).
+- **AI mistakes and how they were caught:**
+  - **Compiler warnings:** the fresh clone's `forge build` printed warnings the local cached build had hidden (test helpers that could be `pure`). Fixed; the build now has 0 compiler warnings.
+  - **Lint notes on `src/`:** the notes left on `src/` are style only (immutable naming, `asm-keccak256`, named struct fields). They were not changed, because `src/` must stay identical to the Stage 1 draft; they are noted for after the audit.
+- **MCP / tools used:** git, pnpm, forge, the scripts above; GitHub Actions run 45980513758 (via `gh`).

@@ -49,7 +49,7 @@ contract CountersignHandler is CommonBase, StdUtils {
         id = cs.tradeIdOf(t);
     }
 
-    function _sign(address signer, bytes memory message) internal view returns (bytes memory sig) {
+    function _sign(address signer, bytes memory message) internal pure returns (bytes memory sig) {
         bytes memory key = MockPqcKeyStatus(PQC_KEY_STATUS).keyOf(keccak256(abi.encode("ml-dsa-87 test key", signer)), 2592);
         bytes32 h = keccak256(abi.encodePacked(key, message));
         sig = new bytes(4627);

@@ -90,7 +90,7 @@ abstract contract CountersignFixture is Test {
     }
 
     /// A mock ML-DSA-87 signature by the key with `seed` over `message` (see MockPqcVerify).
-    function _signWithSeed(bytes32 seed, bytes memory message) internal view returns (bytes memory sig) {
+    function _signWithSeed(bytes32 seed, bytes memory message) internal pure returns (bytes memory sig) {
         bytes memory key = MockPqcKeyStatus(PQC_KEY_STATUS).keyOf(seed, 2592);
         bytes32 h = keccak256(abi.encodePacked(key, message));
         sig = new bytes(4627);
@@ -99,7 +99,7 @@ abstract contract CountersignFixture is Test {
         }
     }
 
-    function _sign(address signer, bytes memory message) internal view returns (bytes memory) {
+    function _sign(address signer, bytes memory message) internal pure returns (bytes memory) {
         return _signWithSeed(_seed(signer), message);
     }
 

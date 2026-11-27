@@ -1,10 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { decodeAbiParameters, encodeFunctionData, erc20Abi, parseAbi, parseAbiItem, type Address, type Hex } from "viem";
 import { usePublicClient } from "wagmi";
-import { DEPLOYMENT, FUSD, FUSD_DENOM, REST, csAbi, faucetAbi } from "./config";
+import { DEPLOYMENT, FUSD, FUSD_DENOM, PQC_KEY_STATUS, REST, csAbi, faucetAbi } from "./config";
 import type { Terms } from "./terms";
 
-const PQC_KEY_STATUS = "0x0000000000000000000000000000000000000a02" as const;
 const keyStatusAbi = parseAbi(["function pqcKeyStatus(address) view returns (bool, uint8, bytes, bool)"]);
 
 export interface KeyStatus {
@@ -46,14 +45,17 @@ export interface Trade {
   cashLocked: boolean;
 }
 
-export function useTrade(id: Hex | undefined) {
-  const pub = usePublicClient();
-  return useQuery({
+export function tradeQueryOptions(pub: ReturnType<typeof usePublicClient>, id: Hex | undefined) {
+  return {
     queryKey: ["trade", id],
     enabled: !!id && !!pub,
     refetchInterval: 8_000,
     queryFn: async () => (await pub!.readContract({ address: DEPLOYMENT.countersign, abi: csAbi, functionName: "getTrade", args: [id!] })) as Trade,
-  });
+  };
+}
+
+export function useTrade(id: Hex | undefined) {
+  return useQuery(tradeQueryOptions(usePublicClient(), id));
 }
 
 export function useNav() {

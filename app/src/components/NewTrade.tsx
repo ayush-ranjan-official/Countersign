@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { parseUnits, type Address, type Hex } from "viem";
 import { toEvmAddress } from "@qorechain/evm";
 import { useAccount, usePublicClient } from "wagmi";
@@ -7,7 +8,7 @@ import { signData } from "../lib/qorex";
 import { useChainNow, useKeyStatus, useNav } from "../lib/reads";
 import { affirmData, encodeTerms, makeTicket, randomSalt, shareLink, sigToParam, tradeIdOf, type Terms } from "../lib/terms";
 import { useTx } from "../lib/tx";
-import { Card, SignedString, TxStatus, fmtFusd, same, short, useQorex } from "./ui";
+import { Card, CopyButton, SignedString, TxStatus, fmtFusd, same, useQorex } from "./ui";
 
 function parseCounterparty(s: string): Address | null {
   const v = s.trim();
@@ -20,7 +21,7 @@ function parseCounterparty(s: string): Address | null {
   return null;
 }
 
-export function NewTrade() {
+export function NewTrade({ initialSide }: { initialSide: "buyer" | "seller" }) {
   const { address } = useAccount();
   const pub = usePublicClient();
   const qx = useQorex();
@@ -28,15 +29,21 @@ export function NewTrade() {
   const now = useChainNow();
   const nav = useNav();
   const tx = useTx();
-  const [role, setRole] = useState<"seller" | "buyer">("seller");
+  const [role, setRole] = useState<"seller" | "buyer">(initialSide);
+  const [reviewing, setReviewing] = useState(false);
+  const reviewPanel = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (reviewing) reviewPanel.current?.focus();
+  }, [reviewing]);
   const [cp, setCp] = useState("");
   const [qty, setQty] = useState("10");
   const [price, setPrice] = useState("10");
   const [hours, setHours] = useState("24");
   const [salt] = useState(randomSalt);
-  const [contractId, setContractId] = useState<Hex | null>(null);
+  const [signing, setSigning] = useState(false);
   const [relay, setRelay] = useState<string | null>(null);
-  const cpAddr = parseCounterparty(cp);
+  const cpAddr = useMemo(() => parseCounterparty(cp), [cp]);
   const cpKey = useKeyStatus(cpAddr ?? undefined);
 
   const terms = useMemo((): Terms | null => {
@@ -49,7 +56,7 @@ export function NewTrade() {
     } catch {
       return null;
     }
-    if (assetAmount <= 0n || cashAmount <= 0n) return null;
+    if (assetAmount <= 0n || cashAmount <= 0n || deadline <= now.data) return null;
     const base = {
       seller: role === "seller" ? me.evm : cpAddr,
       buyer: role === "buyer" ? me.evm : cpAddr,
@@ -66,21 +73,24 @@ export function NewTrade() {
   }, [me, cpAddr, qty, price, hours, role, salt, now.data === undefined]);
 
   const id = terms ? tradeIdOf(terms) : null;
-  useEffect(() => {
-    setContractId(null);
-    if (!terms || !pub) return;
-    pub.readContract({ address: DEPLOYMENT.countersign, abi: csAbi, functionName: "tradeIdOf", args: [terms] }).then((v) => setContractId(v as Hex));
-  }, [terms, pub]);
+  const contractId = useQuery({
+    queryKey: ["proposalTradeId", id, pub?.chain.id],
+    enabled: Boolean(terms && pub),
+    queryFn: async () => (await pub!.readContract({
+      address: DEPLOYMENT.countersign, abi: csAbi, functionName: "tradeIdOf", args: [terms!],
+    })) as Hex,
+  });
 
   const large = terms ? terms.cashAmount >= DEPLOYMENT.largeTradeThreshold : false;
   const fair = terms && nav.data?.price ? nav.data.price * terms.assetAmount : null;
   const devBps = terms && fair ? Number(((terms.cashAmount > fair ? terms.cashAmount - fair : fair - terms.cashAmount) * 10_000n) / fair) : null;
-  const idsMatch = !!id && !!contractId && id === contractId;
+  const idsMatch = !!id && !!contractId.data && id === contractId.data;
   const canSend = !!me?.coin60 && same(address, me.evm);
 
   async function signAndOpen() {
-    if (!terms || !id || !me || !idsMatch) return;
+    if (!terms || !id || !me || !idsMatch || signing) return;
     setRelay(null);
+    setSigning(true);
     try {
       const sig = await signData(me.qor1, affirmData(id));
       if (canSend) {
@@ -91,83 +101,104 @@ export function NewTrade() {
         setRelay(`${location.origin}${location.pathname}#/t/${encodeTerms(terms)}?affirm=${role === "seller" ? "s" : "b"}.${sigToParam(sig)}`);
       }
     } catch (e) {
-      tx.setState({ phase: "error", label: "sign in QoreX", reason: e instanceof Error ? e.message : String(e) });
+      tx.setState({ phase: "error", label: "Sign in QoreX", reason: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setSigning(false);
     }
   }
 
-  return (
-    <div className="stack">
-      <Card title="New trade">
-        <div className="form">
-          <label>
-            I am
-            <select value={role} onChange={(e) => setRole(e.target.value as "seller" | "buyer")}>
-              <option value="seller">selling bonds (I deliver CSB31, I receive fUSD)</option>
-              <option value="buyer">buying bonds (I pay fUSD, I receive CSB31)</option>
-            </select>
-          </label>
-          <label>
-            Counterparty (qor1… or 0x…)
-            <input value={cp} onChange={(e) => setCp(e.target.value)} placeholder="qor1…" spellCheck={false} />
-            {cp && !cpAddr && <span className="bad small">not a valid address</span>}
-            {cpAddr && cpKey.data && (
-              <span className={`small ${cpKey.data.registered && cpKey.data.possessionProven ? "ok" : "bad"}`}>
-                {cpKey.data.registered && cpKey.data.possessionProven ? "✓ has a proven ML-DSA-87 key" : "✗ no proven ML-DSA-87 key yet: they cannot affirm until they make one QoreX transaction"}
-              </span>
-            )}
-          </label>
-          <div className="row">
-            <label>
-              Bonds
-              <input value={qty} onChange={(e) => setQty(e.target.value)} inputMode="numeric" />
-            </label>
-            <label>
-              Price per bond (fUSD)
-              <input value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" />
-            </label>
-            <label>
-              Deadline (hours)
-              <input value={hours} onChange={(e) => setHours(e.target.value)} inputMode="decimal" />
-            </label>
-          </div>
-        </div>
-      </Card>
+  let estimate: bigint | null = null;
+  try {
+    const amount = parseUnits(price, 6) * BigInt(qty);
+    if (amount > 0n) estimate = amount;
+  } catch {
+    // The estimate remains blank until both fields contain numbers.
+  }
+  const sameWallet = Boolean(cpAddr && same(cpAddr, me?.evm));
 
-      {terms && id && (
-        <Card title="Review before you sign">
-          <table className="kv">
-            <tbody>
-              <tr><th>Seller</th><td className="mono">{terms.seller}{same(terms.seller, me?.evm) && " (you)"}</td></tr>
-              <tr><th>Buyer</th><td className="mono">{terms.buyer}{same(terms.buyer, me?.evm) && " (you)"}</td></tr>
-              <tr><th>Delivers</th><td>{terms.assetAmount.toString()} CSB31 bonds</td></tr>
-              <tr><th>Pays</th><td>{fmtFusd(terms.cashAmount)} fUSD ({price} per bond)</td></tr>
-              <tr><th>Deadline</th><td>{new Date(Number(terms.deadline) * 1000).toLocaleString()} (settle by then, or each side reclaims)</td></tr>
-              <tr><th>Four-eyes</th><td>{large ? `yes: ≥ ${fmtFusd(DEPLOYMENT.largeTradeThreshold)} fUSD needs the compliance officer's ML-DSA approval` : "no (below the threshold)"}</td></tr>
-              <tr><th>Reference price</th><td>{nav.data?.price ? `${fmtFusd(nav.data.price)} fUSD per bond; this trade is ${devBps !== null ? (devBps / 100).toFixed(2) : "?"} % away (band ${Number(DEPLOYMENT.maxDeviationBps) / 100} %)` : "no NAV posted yet"}</td></tr>
-              <tr><th>Trade id</th><td className="mono">{id} {idsMatch ? <span className="ok">✓ matches the contract</span> : <span className="muted">checking…</span>}</td></tr>
-            </tbody>
-          </table>
-          {devBps !== null && devBps > Number(DEPLOYMENT.maxDeviationBps) && <p className="status warn">This price is outside the NAV band: settle will refuse it (PriceOutOfBand).</p>}
-          <SignedString data={affirmData(id)} />
-          <div className="row">
-            <button className="primary" disabled={!idsMatch || !me} onClick={signAndOpen}>
-              Sign in QoreX and open the trade
-            </button>
-            <button className="ghost" onClick={() => navigator.clipboard.writeText(shareLink(terms))}>
-              Copy link for {short(role === "seller" ? terms.buyer : terms.seller)}
-            </button>
-          </div>
-          {!canSend && me && <p className="muted small">This account cannot send EVM transactions, so after signing you get a link; anyone with a coin-60 account (e.g. your counterparty) can submit it.</p>}
-          <TxStatus s={tx.state} />
-          {relay && (
-            <div className="signed">
-              <div className="small">Signed. Send this link to your counterparty; opening it lets them submit your affirmation:</div>
-              <textarea readOnly value={relay} rows={3} />
-              <button onClick={() => navigator.clipboard.writeText(relay)}>Copy</button>
+  return (
+    <div className="workspace">
+      <header className="page-heading">
+        <p className="overline">Trade proposal</p>
+        <h1>New trade</h1>
+        <p>Set the terms for a buyer and seller to approve.</p>
+      </header>
+      <div className="work-grid">
+        <Card title={reviewing ? "Review before signing" : "Trade terms"}>
+          {!reviewing ? (
+            <form className="form" onSubmit={(event) => {
+              event.preventDefault();
+              if (terms && idsMatch) setReviewing(true);
+            }}>
+              <label>Buy or sell
+                <select value={role} onChange={(event) => setRole(event.target.value === "buyer" ? "buyer" : "seller")}>
+                  <option value="seller">Sell bonds</option>
+                  <option value="buyer">Buy bonds</option>
+                </select>
+              </label>
+              <label>Counterparty address
+                <input value={cp} onChange={(event) => setCp(event.target.value)} placeholder="qor1… or 0x…" spellCheck={false}
+                  aria-invalid={Boolean(cp && (!cpAddr || sameWallet))} aria-describedby="counterparty-help" />
+              </label>
+              <p className="small muted" id="counterparty-help">
+                {sameWallet ? "Enter the other party’s wallet address." : cp && !cpAddr ? "Enter a valid QoreChain or Ethereum-style address." :
+                  cpKey.data ? cpKey.data.registered && cpKey.data.possessionProven ? "Counterparty’s signing key is verified." :
+                    "The counterparty needs to register their signing key before they can approve." :
+                    "Use the public address of the other party."}
+              </p>
+              <div className="field-pair">
+                <label>Bond quantity<input value={qty} onChange={(event) => setQty(event.target.value)} inputMode="numeric" /></label>
+                <label>Price per bond (fUSD)<input value={price} onChange={(event) => setPrice(event.target.value)} inputMode="decimal" /></label>
+              </div>
+              <details className="disclosure">
+                <summary>Advanced terms <span className="muted">· {hours || "—"} h deadline</span></summary>
+                <label className="mt-3">Deadline (hours)<input value={hours} onChange={(event) => setHours(event.target.value)} inputMode="decimal" /></label>
+              </details>
+              {!me && <p className="notice">Connect QoreX in the header to review and open this trade.</p>}
+              {contractId.isError && <p className="notice" role="alert">Could not verify the terms on-chain. <button className="link" type="button" onClick={() => contractId.refetch()}>Try again</button></p>}
+              <button className="primary w-fit" type="submit" disabled={!terms || !idsMatch}>
+                {terms && contractId.isFetching ? "Verifying trade…" : "Review trade"}
+              </button>
+            </form>
+          ) : terms && id ? (
+            <div className="stack" tabIndex={-1} ref={reviewPanel}>
+              <dl className="network-details">
+                <div><dt>Seller</dt><dd className="mono">{terms.seller}{role === "seller" && " (you)"}</dd></div>
+                <div><dt>Buyer</dt><dd className="mono">{terms.buyer}{role === "buyer" && " (you)"}</dd></div>
+                <div><dt>Settle by</dt><dd>{new Date(Number(terms.deadline) * 1000).toLocaleString()}</dd></div>
+              </dl>
+              {large && <p className="notice">A compliance officer’s approval is required to settle this trade.</p>}
+              {devBps !== null && devBps > Number(DEPLOYMENT.maxDeviationBps) && <p className="notice">The price is outside the permitted range for settlement.</p>}
+              {!canSend && <p className="notice">QoreX will return a link so the counterparty can submit your signed approval.</p>}
+              <div className="action-row">
+                <button className="primary" disabled={!idsMatch || signing} onClick={signAndOpen}>{signing ? "Waiting for QoreX…" : "Sign and open"}</button>
+                <button className="ghost" disabled={signing} onClick={() => setReviewing(false)}>Edit terms</button>
+              </div>
+              <TxStatus s={tx.state} />
+              {relay && <div className="notice"><p>Your approval is signed. Share the link so the other party can submit it.</p><CopyButton text={relay} label="Copy signed link" /></div>}
+              <details className="disclosure">
+                <summary>Technical details</summary>
+                <p className="mono mt-3">{id}</p>
+                <SignedString data={affirmData(id)} />
+                <CopyButton text={shareLink(terms)} label="Copy draft link" />
+              </details>
             </div>
+          ) : (
+            <p className="muted">Your wallet or terms changed. <button className="link" onClick={() => setReviewing(false)}>Edit terms</button></p>
           )}
         </Card>
-      )}
+        <aside className="panel exchange-panel" aria-label="Exchange summary">
+          <h2>Exchange summary</h2>
+          <div className="exchange-pair">
+            <div><span>{role === "seller" ? "You deliver" : "You receive"}</span><strong>{qty || "—"}</strong><small>CSB31 bonds</small></div>
+            <span className="exchange-arrow" aria-hidden="true">⇄</span>
+            <div><span>{role === "seller" ? "You receive" : "You pay"}</span><strong>{estimate === null ? "—" : fmtFusd(estimate)}</strong><small>fUSD</small></div>
+          </div>
+          <div className="exchange-note">
+            <span>Reference price</span><strong>{nav.data?.price ? fmtFusd(nav.data.price) + " fUSD / bond" : nav.isLoading ? "Checking…" : "Unavailable"}</strong>
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }

@@ -23,7 +23,8 @@
     "deploy:spike-escrow": "forge script script/DeploySpikeEscrow.s.sol --rpc-url qorechain_testnet --broadcast --slow",
     "deploy:countersign": "forge script script/DeployCountersign.s.sol --rpc-url qorechain_testnet --broadcast --slow",
     "trade": "tsx --env-file=.env scripts/trade.ts",
-    "attack": "tsx --env-file=.env scripts/attack.ts"
+    "attack": "tsx --env-file=.env scripts/attack.ts",
+    "counterparty": "tsx --env-file=.env scripts/counterparty.ts"
   },
   "dependencies": {
     "@cosmjs/proto-signing": "^0.39.0",

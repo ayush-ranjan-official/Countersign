@@ -1,0 +1,23 @@
+Countersign
+Copyright 2026 The Countersign authors (github.com/ayush-ranjan-official/Countersign)
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product builds on the following third-party software. Each component
+keeps its own licence; none of it is relicensed by this repository.
+
+- QoreChain Asset Kit v0.1.0 (github.com/qorechain/qorechain-asset-kit)
+  Git submodule under contracts/lib/, used unmodified.
+- CMTAT v3.2.0 (github.com/CMTA/CMTAT), MPL-2.0, pulled in by the Asset Kit.
+  File-level copyleft: CMTAT files are used unmodified as a submodule.
+- OpenZeppelin Contracts (github.com/OpenZeppelin/openzeppelin-contracts), MIT.
+- forge-std (github.com/foundry-rs/forge-std), MIT OR Apache-2.0.
+- QoreChain "Build Before Q-Day" workshop 2, QDayVault pattern
+  (github.com/qorechain/build-before-qday), used as the reference pattern for
+  the fail-closed precompile calls, vm.etch mocks and window scripts.
+- create-qorechain-dapp (npm), foundry and viem-wagmi templates.
+- QoreChain TypeScript packages (@qorechain/sdk, @qorechain/evm,
+  @qorechain/qoresign, @qorechain/qoreseal, @qorechain/qorex-types,
+  @qorechain/qorex-rainbowkit) from npm.
+- QoreChain MCP agent skills (github.com/qorechain/qorechain-mcp, skills/),
+  copied into .claude/skills/.

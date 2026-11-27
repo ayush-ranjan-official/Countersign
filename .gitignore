@@ -1,0 +1,32 @@
+# --- secrets: never commit ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+keys/
+*recovery*
+*.mnemonic
+secrets/
+
+# --- reference repos (read-only, cloned locally) ---
+refs/
+
+# --- node / app ---
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+.pnpm-store/
+
+# --- foundry ---
+contracts/out/
+contracts/cache/
+contracts/broadcast/*/31337/
+contracts/broadcast/**/dry-run/
+
+# --- local tooling ---
+.DS_Store
+.claude/settings.local.json
+.vscode/
+*.log

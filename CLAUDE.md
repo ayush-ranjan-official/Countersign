@@ -256,7 +256,8 @@ struct Terms {
 - Quick check: `cast call 0x0000000000000000000000000000000000000a02 "pqcKeyStatus(address)(bool,uint8,bytes,bool)" <addr> --rpc-url https://evm-testnet.qore.host`.
 
 **Accounts and keys**
-- Every account has a `0x` form and a `qor1` form of the same 20 bytes (bech32 prefix `qor`, coin type 118). The faucet wants `qor1`.
+- Every account has a `0x` form and a `qor1` form of the same 20 bytes (bech32 prefix `qor`). The faucet wants `qor1`.
+- **Corrected 27 Nov (was "coin type 118"):** the EVM lane and windows work **only with `eth_secp256k1` (coin type 60) accounts**. QoreX's default `qor1` account is coin type 118 and **cannot send on the EVM lane** (QoreX answers `4100`). In QoreX use Settings → Your accounts → **Add an Ethereum account (coin 60)**. Our script accounts (`unifiedAccountFromSeed`) are eth_secp256k1. Sources: docs `developer-guide/evm-development` (#evm-window, "Key type") and `qorex/dapp-integration`.
 - Hybrid signing = secp256k1 + ML-DSA-87. An account must register its ML-DSA-87 key once, **with a proof of possession**. This costs a fee of ≈0.09 QOR at ≈600k gas, and it is the only transaction accepted with the classical key alone.
 - QOR is 6 decimals natively (`uqor`) and 18 decimals on the EVM. The minimum native gas price is 0.1 uqor.
 - Use SIGN_MODE_DIRECT, not Amino.
@@ -306,6 +307,8 @@ struct Terms {
 - The guard **fails closed** and checks the sender, the receiver and the `transferFrom` spender. **Countersign must be exempted:** `guard.setExempt(countersign, true, "Countersign DvP escrow")`, called by the guard owner.
 - The seller and buyer need registered, possession-proven ML-DSA keys.
 - CMTAT `forcedTransfer` by an agent bypasses the rule; document this in the threat model.
+- The guard calls `pqcKeyStatus` with a **50,000 gas cap** (`PRECOMPILE_GAS`). The real precompile costs a flat 2,500, but a Foundry mock that stores the 2,592-byte key in storage (81 cold SLOADs ≈ 170k gas) runs out of gas and the guard fails closed. Mocks must stay cheap (`test/mocks/MockPqcKeyStatus.sol` stores a 32-byte seed and expands the key in memory).
+- Rule restriction codes: 60 = sender not hybrid, 61 = receiver not hybrid, 62 = spender not hybrid (`QoreChainHybridHolderRule_TransferRejected(uint8)`).
 - **Licences:** avoid the ERC-3643/T-REX path, which is GPL-3.0, so the repo stays Apache-2.0. CMTAT is MPL-2.0 (file-level copyleft): keep it as an unmodified submodule and credit it in README/NOTICE.
 
 **QoreSeal (v0.1.0)**

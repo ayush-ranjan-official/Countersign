@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Countersign spike S-2</title>
+  <style>
+    :root { --bg: #fafaf9; --fg: #1c1917; --muted: #57534e; --line: #d6d3d1; --accent: #0f766e; --bad: #b91c1c; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #1c1917; --fg: #f5f5f4; --muted: #a8a29e; --line: #44403c; --accent: #2dd4bf; --bad: #f87171; } }
+    body { background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, sans-serif; margin: 0; padding: 24px 16px; }
+    main { max-width: 760px; margin: 0 auto; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    p { color: var(--muted); margin: 4px 0 16px; }
+    code, pre, textarea { font: 12.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    pre, textarea { width: 100%; box-sizing: border-box; background: transparent; color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 10px; white-space: pre-wrap; word-break: break-all; }
+    button { font: inherit; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: var(--bg); cursor: pointer; margin: 4px 8px 4px 0; }
+    button:disabled { opacity: .45; cursor: default; }
+    .row { margin: 14px 0; }
+    .bad { color: var(--bad); }
+    label { font-weight: 600; display: block; margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Countersign spike S-2: QoreX <code>signArbitrary</code></h1>
+  <p>This page asks QoreX to sign the exact affirmation string the Countersign contract will verify with <code>pqcVerify</code>. Use the QoreX <b>Ethereum account (coin 60)</b> on <b>testnet</b>. Nothing is broadcast.</p>
+
+  <div class="row"><button id="connect">1. Connect QoreX (qorechain-diana)</button></div>
+  <div class="row"><label>Wallet</label><pre id="wallet">not connected</pre></div>
+  <div class="row"><label>Exact string QoreX will sign (data)</label><pre id="data"></pre></div>
+  <div class="row"><button id="sign" disabled>2. Sign with QoreX</button></div>
+  <div class="row"><label>Result: copy all of this and paste it back to Claude</label><textarea id="out" rows="12" readonly></textarea></div>
+  <div class="row"><button id="copy" disabled>Copy result</button></div>
+</main>
+<script>
+  const CHAIN_ID = "qorechain-diana";
+  const $ = (id) => document.getElementById(id);
+  const hex = (bytes) => "0x" + Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  // A stand-in tradeId: lowercase 0x + 64 hex, the same shape as Strings.toHexString(uint256(tradeId), 32).
+  const tradeId = hex(crypto.getRandomValues(new Uint8Array(32)));
+  const data = "countersign:v1:affirm:" + tradeId;
+  $("data").textContent = data;
+  let signer = null;
+
+  function fail(e) {
+    $("out").value = "ERROR: " + (e && e.message ? e.message : String(e)) + (e && e.code !== undefined ? " (code " + e.code + ")" : "");
+    $("out").classList.add("bad");
+  }
+
+  $("connect").onclick = async () => {
+    try {
+      const native = window.qorex && window.qorex.native;
+      if (!native) throw new Error("window.qorex.native not found: is the QoreX extension installed and enabled for this site?");
+      const caps = Array.isArray(native.capabilities) ? native.capabilities : [];
+      await native.enable(CHAIN_ID);
+      const key = await native.getKey(CHAIN_ID);
+      signer = key.bech32Address;
+      const canSign = caps.includes("signArbitrary") || typeof native.signArbitrary === "function";
+      $("wallet").textContent =
+        "address: " + signer + "\n" +
+        "name: " + (key.name || "") + "\n" +
+        "algo: " + (key.algo || "") + "\n" +
+        "capabilities: " + (caps.length ? caps.join(", ") : "(none declared)") + "\n" +
+        "signArbitrary available: " + canSign;
+      $("sign").disabled = !canSign;
+    } catch (e) { fail(e); }
+  };
+
+  $("sign").onclick = async () => {
+    try {
+      const sig = await window.qorex.native.signArbitrary(CHAIN_ID, signer, data);
+      $("out").classList.remove("bad");
+      $("out").value = JSON.stringify({ spike: "S-2", chainId: CHAIN_ID, signer, data, signature: sig }, null, 2);
+      $("copy").disabled = false;
+    } catch (e) { fail(e); }
+  };
+
+  $("copy").onclick = () => navigator.clipboard.writeText($("out").value);
+</script>
+</body>
+</html>

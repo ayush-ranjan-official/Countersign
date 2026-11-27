@@ -1,111 +1,38 @@
-# QoreChain Foundry starter
+# Countersign contracts
 
-A [Foundry](https://getfoundry.sh) project for the QoreChain EVM: a `Counter`
-contract, its tests, a deploy script, and a small helper that opens the EVM
-authorisation window your deployer needs.
+A Foundry project for the QoreChain EVM, scaffolded with `create-qorechain-dapp` (foundry template). It holds:
 
-| Network | EVM chain id | RPC (named in `foundry.toml`) |
-| --- | --- | --- |
-| Testnet (`qorechain-diana`) | 9800 | `qorechain_testnet` = `https://evm-testnet.qore.host` |
-| Mainnet (`qorechain-vladi`) | 9801 | `qorechain` = `https://evm.qore.host` |
-
-## Prerequisites
-
-- Foundry (`forge`), installed with `foundryup`.
-- Node.js 20 or later and a package manager, for the window helper.
-- A funded account on the network you deploy to.
-
-## Setup
-
-```sh
-pnpm install          # the window helper's dependencies
-pnpm forge-std        # forge install foundry-rs/forge-std --no-git
-cp .env.example .env  # the scaffolder already did this
-```
-
-Put the deployer's key in `.env` (`PRIVATE_KEY`). Never commit `.env`.
+| Path | What |
+|---|---|
+| `src/Countersign.sol` | Post-quantum DvP escrow: ML-DSA-87 affirmations verified with the `pqcVerify` precompile, atomic settle, reclaim after the deadline, four-eyes, NAV band |
+| `src/DemoBondFaucet.sol` | Testnet demo only: any hybrid holder claims demo bonds, so anyone can be a seller |
+| `src/interfaces/IQorePQC.sol` | The `pqcVerify` (`0x…0a01`) / `pqcKeyStatus` (`0x…0a02`) precompiles |
+| `script/DeployBond.s.sol` | Asset Kit CMTAT bond + hybrid-holder guard + rule (broadcast version of the kit's `DeployCmtat.s.sol`) |
+| `test/` | Unit, fuzz and invariant tests; precompiles mocked with `vm.etch` |
+| `audit/` | `*_v0_draft.sol`: the exact sources submitted to the Stage 1 QCAI audit |
+| `scripts/` | tsx operational scripts: accounts, funding, PQC registration, scoped windows, fUSD conversion, spikes |
+| `deployments/` | Addresses written by real broadcasts only (never by dry runs) |
 
 ## Build and test
 
 ```sh
+pnpm install
 forge build
 forge test
+pnpm typecheck
 ```
 
-Tests run on Foundry's local EVM and need no network.
+## Operational scripts (testnet only)
 
-## Before you deploy: open an EVM window
-
-QoreChain admits an EVM transaction only when the sender has:
-
-1. a registered **ML-DSA-87** key, and
-2. a live **EVM authorisation window**.
-
-Both are set up on QoreChain's native lane with messages signed with the
-post-quantum key, so the secp256k1 key in `PRIVATE_KEY` can never authorise
-spending on its own. A deploy from an account without them is refused, so do
-this first:
+The five demo accounts are throwaway testnet keys created by `pnpm keygen` into `.env` (gitignored).
 
 ```sh
-pnpm window status     # account, PQC key, window
-pnpm window register   # once per account: registers its ML-DSA-87 key
-pnpm window open       # opens a window: 600 blocks, 5 transactions
+pnpm accounts                        # addresses, balances, ML-DSA key status, windows
+pnpm register all                    # MsgRegisterPQCKeyV2 with proof of possession
+pnpm fund                            # ISSUER -> demo accounts (bank MsgSend)
+pnpm window open ISSUER --deploy     # deploy window (no allowedTargets)
+pnpm window open BUYER --targets 0xCountersign,0xBond,0xfUSD   # scoped window
+pnpm convert-fusd BUYER 100          # MsgConvertCoin: bank fUSD -> ERC-20 fUSD
 ```
 
-With `QORE_MNEMONIC` set, the helper derives the account and its ML-DSA-87 key
-from the mnemonic. Otherwise it uses `PRIVATE_KEY` for the account and a PQC
-recovery code, `QORE_PQC_RECOVERY_CODE`, for the ML-DSA-87 key; it stops with a
-message if the code is missing. Create a code once and put it in `.env`:
-
-```sh
-pnpm window recovery-code   # prints a new QRC1 code (generatePqcRecoveryCode)
-```
-
-Keep a copy of the code apart from the private key and keep using the same
-one: a different code gives the account a different ML-DSA-87 key. If the
-account already has a key registered by another wallet, open the window from
-that wallet instead. An account registered with this helper before SDK 0.13.0
-has a different key registered; `pnpm window status` then shows
-"registered, but NOT this key". Rotate it to the recovery-code key with
-`rotatePqcKeyMsg` (MsgRotatePQCKey), loading the old key with
-`unifiedAccountFromSeed(seed, { legacySeedDerivation: true })` (see the
-`@qorechain/sdk` README).
-
-What to know about the window:
-
-- It bounds the number of blocks, the number of EVM transactions, and the total
-  they may spend: value **plus** the maximum fee (gas limit x fee cap) of each
-  transaction. Foundry sets the fee cap near twice the base fee (a dry run on
-  the testnet priced a deploy at 200 gwei), so `pnpm window open` sizes the
-  window for transactions of up to 3,000,000 gas at 250 gwei. Set
-  `QORE_WINDOW_MAX_UQOR` to choose the total yourself.
-- `blocks` is a block count, not a duration.
-- Opening a window is a native-lane transaction, and it **advances the
-  account's nonce**. Open the window first, then deploy; Foundry reads the
-  nonce when it broadcasts.
-- Opening replaces any earlier window.
-
-## Deploy
-
-```sh
-pnpm window open
-forge script script/Counter.s.sol --rpc-url qorechain_testnet --broadcast
-# or: pnpm deploy:testnet
-```
-
-The script reads `PRIVATE_KEY` and `COUNTER_INITIAL` from `.env`.
-
-Fees: on both networks today `eth_gasPrice` answers 112.5 gwei (a 100 gwei
-base fee plus a 12.5 gwei priority fee). Foundry's defaults pick this up.
-
-Contract verification: Sourcify does not list chain ids 9800 and 9801 yet.
-
-## Project layout
-
-```
-src/Counter.sol           the contract
-test/Counter.t.sol        Foundry tests
-script/Counter.s.sol      the deploy script
-scripts/window.ts         the EVM window helper (pnpm window)
-foundry.toml              compiler settings and the named RPC endpoints
-```
+Every script simulates before it broadcasts and appends real tx hashes to `../docs/DEMO.md`.

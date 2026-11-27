@@ -96,3 +96,24 @@ Commits written with the AI carry a `Co-Authored-By: Claude` trailer.
 - **Human reviewed / changed:** did the QoreX signing (wallet-only step).
 - **AI mistakes and how they were caught:** none.
 - **MCP / tools used:** JSON-RPC `eth_call` to `0x…0a01` / `0x…0a02`, `@qorechain/qoresign/network` `verifyMessageWithChain`.
+
+### T6: M1 + M2 + S1 + S2 contract, self-serve parts, M5 tests, v0 draft (27 Nov 2026)
+- **Asked:** after all spikes passed, build `Countersign.sol` in priority order and base it on the QDayVault pattern. The builder had asked for the self-serve parts: the `TradeOpened` event and a demo bond faucet.
+- **AI generated:**
+  - `src/Countersign.sol`: affirm, lock, settle, reclaim; fail-closed `pqcKeyStatus` + `pqcVerify`; four-eyes; NAV band; per-leg reclaim; `TradeOpened`; `sealTicket`.
+  - `src/interfaces/IQorePQC.sol`, `src/DemoBondFaucet.sol`.
+  - Tests: `test/Countersign.t.sol` (42 tests: A1–A10, state machine, NAV, four-eyes, reentrancy, fee-on-transfer, paused-bond reclaim, 2 fuzz), `test/Invariants.t.sol` (3 invariants + 1 handler-reachability test), `test/DemoBondFaucet.t.sol` (6 tests).
+  - Mocks: `test/mocks/MockPqcVerify.sol`, `test/mocks/MockTokens.sol`, `test/utils/CountersignFixture.sol`. The fixture uses the real Asset Kit CMTAT bond + guard + rule with mocked precompiles.
+  - Snapshot: `contracts/audit/Countersign_v0_draft.sol` and `DemoBondFaucet_v0_draft.sol`. Byte-identical to `src` at this commit: sha256 `6887fcd3…2c66` and `27c5187f…ef8f`.
+  - Design differences from the spec are recorded in CLAUDE.md §6 "As implemented".
+- **Test results (real runs):**
+  - `forge test`: **55 passed, 0 failed** (5 suites).
+  - Invariants: 128 runs × 64 depth = 8,192 calls each, **0 reverts** with `FOUNDRY_INVARIANT_FAIL_ON_REVERT=true`.
+  - **Mutation check:** 6 hand-made mutants of security lines (drop the possession check, drop the empty-return check, drop the officer check, drop the NAV check, tradeId without `address(this)`, reclaim before the deadline). **All 6 were killed** by the expected tests, so the tests check the security rules, not just the happy path.
+- **Human reviewed / changed:** asked for the self-serve design and for M1 to wait until S-2 passed. The code is not yet reviewed by the human.
+- **AI mistakes and how they were caught:**
+  1. **Test-ordering bugs:** in 2 tests `vm.expectRevert` came before a helper that makes its own external calls, and in 1 test `vm.prank` would have applied to the wrong call. Caught by my own review before the first run.
+  2. **Memory aliasing:** in the invalid-terms test, memory struct assignment aliased all 8 "bad terms" to one struct. Caught in the same review. Fixed with fresh copies.
+  3. **Invariant harness:** the first invariant run showed handler-level reverts. A fail-on-revert run traced them to the fuzzer calling the setup-only `addTrade` with `assetAmount = 0` (division by zero in the handler). Fixed with `targetSelector`.
+  4. **Lint leftover:** an earlier BSD `sed` with `\|` had silently not removed two imports from the smoke test. Caught by a forge lint note.
+- **MCP / tools used:** none new (local Foundry work).

@@ -241,6 +241,20 @@ struct Terms {
 - Custom errors: `KeyNotRegistered`, `KeyNotProven`, `BadPqcSignature`, `PrecompileInactive`, `NotAffirmed`, `AlreadySettled`, `DeadlinePassed`, `DeadlineNotPassed`, `OfficerApprovalRequired`, `NavStale`, `PriceOutOfBand`, `NotParty`, `NotLocked`.
 - Events: `Affirmed`, `ApprovedLarge`, `NavPosted`, `Locked`, `Settled(tradeId, seller, buyer, assetAmount, cashAmount)`, `Reclaimed`, `TicketSealed`.
 
+**As implemented (27 Nov, `src/Countersign.sol`, v0 draft = `contracts/audit/Countersign_v0_draft.sol`). Changes from the spec above, with reasons:**
+- **NAV message is human-readable and bound to the cash token:** `postNav(asset, cash, price, ts, nonce, sig)`, data = `countersign:v1:nav:asset=0x…;cash=0x…;price=<uint>;ts=<uint>;nonce=<uint>`.
+  - Why: the price applies only to one quote currency.
+  - Why: the attestor signs in QoreX, so the message must be readable, not a hash (no blind signing).
+  - NAV must also be newer than the current one, so an old signed price can't be posted out of order. Nonces are single-use.
+- **Per-leg reclaim:** `reclaimAsset` / `reclaimCash` exist next to `reclaim`. Why: a paused or frozen bond (issuer power) must not trap the buyer's cash.
+- **Discovery for the self-serve app:**
+  - The first valid affirmation opens the trade and emits `TradeOpened(tradeId, seller, buyer, terms)`.
+  - `sealTicket(tradeId, envelope)`: only a party, only if `ticketHash != 0`. Emits `TicketSealed`.
+- **Views for the UI:** `affirmData`, `approveData`, `navData` (the exact strings QoreX shows), `signedBytes(data)` (the bytes `pqcVerify` checks), `requiresOfficer`.
+- **Extra errors:** `InvalidConfig`, `InvalidTerms`, `UnsupportedKey`, `BadSignatureLength`, `AlreadyAffirmed`, `AlreadyLocked`, `TradeClosed`, `NoOfficer`, `InvalidNav`, `NavNonceUsed`, `NoTicket`, `UnexpectedTransferAmount`.
+- **Lock pulls check the received amount** (fee-on-transfer tokens are refused).
+- `src/DemoBondFaucet.sol` (self-serve, testnet demo only) is described in §4.
+
 **Attacks the contract must stop. Each one gets a test and a step in the demo:**
 
 | # | Attack (the attacker has the classical key, not the ML-DSA key) | Expected result |

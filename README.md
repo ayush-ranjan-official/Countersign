@@ -21,6 +21,10 @@ app/         Vite + React + wagmi web app (QoreX wallet)
 docs/        THREAT_MODEL, AUDIT, DEMO, ARCHITECTURE, audit reports
 ```
 
+## Setup checklist demo
+
+![Countersign overview with an animated crystal coin and expandable wallet setup instructions](docs/assets/setup-checklist-demo.gif)
+
 ## Use Countersign end to end
 
 This walkthrough runs a real testnet settlement on **QoreChain Diana** (EVM chain ID **9800**) using the shared Countersign deployment. You sell **10 CSB31 demo bonds** from your QoreX wallet to a script buyer for **100 test fUSD**. You need one browser with QoreX, one signed-in faucet claim, and a terminal. Use throwaway testnet accounts and keep your wallet recovery phrase and `contracts/.env` private.
@@ -164,6 +168,7 @@ Countersign builds on the following open-source work. See [NOTICE](NOTICE) for t
 | [Build Before Q-Day, workshop 2 (QDayVault)](https://github.com/qorechain/build-before-qday) | Reference pattern for fail-closed PQC checks, `vm.etch` mocks, window scripts, two-stage audit |
 | [create-qorechain-dapp](https://www.npmjs.com/package/create-qorechain-dapp) | `foundry` and `viem-wagmi` templates used to scaffold `contracts/` and `app/` |
 | [Tailwind CSS](https://tailwindcss.com/) and [Motion](https://motion.dev/) | Responsive app styling and interaction transitions |
+| [Three.js](https://threejs.org/) | Emerald crystal coin and refraction |
 | [Instrument Serif](https://fonts.google.com/specimen/Instrument+Serif) and [Manrope](https://fonts.google.com/specimen/Manrope) | App typography |
 | QoreChain packages: `@qorechain/sdk`, `@qorechain/evm`, `@qorechain/qoresign`, `@qorechain/qoreseal`, `@qorechain/qorex-types`, `@qorechain/qorex-rainbowkit` | Accounts, windows, ML-DSA signing, QoreSeal, QoreX wallet |
 | [QoreChain MCP](https://github.com/qorechain/qorechain-mcp) | Read-only chain tools and agent skills used while building (see [AI_USAGE.md](AI_USAGE.md)) |

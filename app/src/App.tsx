@@ -47,7 +47,7 @@ export function App() {
   ] as const;
 
   return (
-    <div className="app">
+    <div className="app" data-page={r.page}>
       <a className="skip-link" href="#workspace" onClick={(event) => {
         event.preventDefault();
         document.getElementById("workspace")?.focus();
@@ -68,7 +68,7 @@ export function App() {
         </div>
       </header>
       <main id="workspace" className="min-w-0" tabIndex={-1}>
-        {r.page === "ready" && <Readiness initialSide={r.side} />}
+        {r.page === "ready" && <Readiness />}
         {r.page === "new" && <NewTrade key={r.side} initialSide={r.side} />}
         {r.page === "blotter" && <Blotter />}
         {r.page === "trade" && <TradeView key={hash} {...r.trade} />}

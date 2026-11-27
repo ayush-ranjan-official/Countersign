@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { erc20Abi, type Hex } from "viem";
 import { useAccount, usePublicClient } from "wagmi";
-import { DEPLOYMENT, FUSD, csAbi } from "../lib/config";
+import { CHAIN_ID, DEPLOYMENT, FUSD, csAbi } from "../lib/config";
 import { signData } from "../lib/qorex";
-import { STATUS, useBalances, useBlotter, useChainNow, useNav, useSettlement, useTrade } from "../lib/reads";
+import { STATUS, useBalances, useBlotter, useChainNow, useKeyStatus, useNav, useSettlement, useTrade } from "../lib/reads";
 import { affirmData, approveData, encodeTerms, paramToSig, shareLink, sigToParam, tradeIdOf, type Terms } from "../lib/terms";
 import { preflight, useTx, type Call } from "../lib/tx";
+import { MIN_QOR, Readiness } from "./Readiness";
 import { Addr, Card, CopyButton, SignedString, TxLink, TxStatus, fmtFusd, same, short, useQorex } from "./ui";
 
 export interface TradeRoute {
@@ -21,7 +22,7 @@ const cs = (functionName: string, args: readonly unknown[]): Call => ({ address:
 export function TradeView(route: TradeRoute) {
   const reduceMotion = useReducedMotion();
   const pub = usePublicClient();
-  const { address } = useAccount();
+  const { address, chainId } = useAccount();
   const qx = useQorex();
   const me = qx.data;
   const blotter = useBlotter();
@@ -47,6 +48,8 @@ export function TradeView(route: TradeRoute) {
   const iAmBuyer = !!terms && same(me?.evm, terms.buyer);
   const iAmOfficer = same(me?.evm, DEPLOYMENT.officer);
   const canSend = !!me?.coin60 && same(address, me.evm);
+  const participantSide = iAmSeller ? "seller" : iAmBuyer ? "buyer" : undefined;
+  const walletKey = useKeyStatus(participantSide ? me?.evm : undefined);
 
   // Live answer to "can this trade settle right now, and if not, why?" (simulated, nothing sent).
   useEffect(() => {
@@ -106,6 +109,16 @@ export function TradeView(route: TradeRoute) {
     await tx.run(label, cs(name, args));
     await trade.refetch();
   };
+  const requiredDeposit = iAmSeller ? terms.assetAmount : terms.cashAmount;
+  const deposited = iAmSeller ? t?.assetLocked : t?.cashLocked;
+  const balance = iAmSeller ? bal.data?.bonds : bal.data?.fusd;
+  const key = walletKey.data;
+  const needsSetup = participantSide && canSend && open && !expired && !deposited && !busy
+    && !route.relayAffirm && !route.relayApprove && (chainId !== CHAIN_ID
+      || (key && (!key.registered || !key.possessionProven || key.algorithmId !== 1 || key.keyLength !== 2592))
+      || (bal.data && bal.data.qor <= MIN_QOR)
+      || (balance !== undefined && balance < requiredDeposit));
+
   const relayAffirm = route.relayAffirm;
   const relayApprove = route.relayApprove;
   let next: { label: string; detail: string; run?: () => void; signature?: string } = {
@@ -209,6 +222,8 @@ export function TradeView(route: TradeRoute) {
               <p>{fmtFusd(terms.cashAmount)} fUSD paid to the seller</p>
               {settlement.data && <div className="mt-3"><TxLink hash={settlement.data.tx} label="View settlement receipt" /></div>}
             </motion.div>
+          ) : needsSetup && participantSide ? (
+            <Readiness tradeSetup={{ side: participantSide, amount: requiredDeposit }} />
           ) : (
             <div className="stack">
               <div>

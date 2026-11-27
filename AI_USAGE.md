@@ -219,3 +219,38 @@ Commits written with the AI carry a `Co-Authored-By: Claude` trailer.
 ### Agentation for redesign feedback (27 Nov 2026)
 - **Asked:** Install Agentation as a development dependency and reload the redesign preview.
 - **Codex:** Added the toolbar to the Vite development entry point. Verified it appeared after reloading localhost and was absent from the production bundle.
+
+### First overview feedback pass (27 Nov 2026)
+- **Asked:** Commit the current redesign locally, remove the overview eyebrow labels, bring the green texture to the page canvas, change the overview heading typography, and suggest alternatives for the role chooser.
+- **Codex:** Committed the pre-feedback snapshot, then applied the first five notes as a separate working change. Kept the current role chooser interaction for review.
+- **Verified:** Checked the gradient, transparent intro, heading font, and role switching on desktop and mobile.
+
+### Readiness coin and overview layout (28 Nov 2026)
+- **Asked:** Use the supplied grainy green wash, move the buyer/seller choice to asset preparation, and place an emerald-rimmed coin with a milky face beneath the intro on the left. Keep the checklist on the right.
+- **Codex:** Tied the four pieces to wallet connection, gas, signing setup, and trading asset readiness. Added a subtle hover tilt and a fallback for browsers without WebGL.
+- **Verified:** Checked the desktop placement and all four assembly transitions in the browser using a temporary fixture. Opened an existing settled trade without submitting a new transaction.
+
+### Clear crystal coin and page background (28 Nov 2026)
+- **Asked:** Extend the background through the footer, remove the coin caption, and use the supplied optical crystal code without the previous milky face and emerald rim.
+- **Codex:** Used the reference's transmissive body and emblem materials, studio environment, reeded profile, and Chromatic Aura shader. The shader supplies light to the refraction pass and the page wash remains visible around the shards. Kept the existing checkpoint-controlled assembly.
+- **Verified:** Checked background coverage at 1470×728 and exercised the four checkpoints with a temporary browser fixture.
+
+### Page-wash refraction and pointer response (28 Nov 2026)
+- **Asked:** Refract the actual page background and make the crystal respond on hover.
+- **Codex:** Reused the overview wash image and gradient in the transmission pass, aligned to the coin's document position. Pointer movement now tilts the coin even with reduced motion enabled, in which case the tilt updates without easing.
+- **Verified:** Ran a temporary browser check in reduced-motion mode. Recorded different WebGL output during pointer movement and identical output when the pointer left and the coin returned to rest.
+
+### Intact Emerald Prism coin (28 Nov 2026)
+- **Asked:** Replace the checkpoint shards with the supplied intact crystal coin, including its animation, optics, and Emerald Prism background.
+- **Codex:** Ported the supplied coin geometry, two-sided Bitcoin emblem, optical materials, studio lights, and animated Emerald Prism shader. The coin and overview backdrop now share one WebGL scene. Used the app's installed Three.js version because the attachment's CDN version could not be fetched.
+- **Verified:** Inspected the intact render on desktop and mobile and compared successive desktop frames. The frontend build, contracts type check, and all 55 Foundry tests passed.
+
+### Lighter overview wash (28 Nov 2026)
+- **Asked:** Review the overview for visual polish and lighten the moving emerald background while keeping the coin as it was.
+- **Codex:** Used pale sage and off-white for the visible wash, softened the moving highlights, and restored the dark typography. Retained the original emerald contrast in the crystal's refraction pass.
+- **Verified:** Inspected the desktop and mobile previews and confirmed the background still moves between frames.
+
+### Expandable setup guides (28 Nov 2026)
+- **Asked:** Explain what each setup step means and give users step-by-step instructions, copyable values, and commands within the checklist.
+- **Codex:** Made all four rows expandable, with the current step open by default. Added QoreX, Diana faucet, signing-key, and buyer/seller guidance. Reused existing copy controls and added optional read-only Foundry checks for balance and key status.
+- **Verified:** Exercised mouse and keyboard expansion, checked the two asset paths and prerequisite gating, and verified that long commands fit the mobile view. Browser checks did not submit testnet transactions.

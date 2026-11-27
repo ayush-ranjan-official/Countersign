@@ -9,6 +9,7 @@ if (wantLocal && !localFile) throw new Error("VITE_DEPLOYMENT=local but src/gene
 const generated: typeof shared = wantLocal && localFile ? localFile : shared;
 
 export const CHAIN_ID = 9800;
+export const PQC_KEY_STATUS = "0x0000000000000000000000000000000000000a02" as const;
 export const NATIVE_CHAIN_ID = "qorechain-diana";
 export const EXPLORER = "https://explore.qore.network";
 

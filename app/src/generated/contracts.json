@@ -3,20 +3,20 @@
   "chainId": 9800,
   "nativeChainId": "qorechain-diana",
   "deployment": {
-    "attestor": "0xA56cb7dBca45FCf1B21ef9172999343447045891",
+    "attestor": "0x0B6Ef4262777F2d3b45a98b5d02A11Eb76E1738d",
     "bond": "0xE125101F98f2E689d7562245e9633BD74B60f213",
-    "countersign": "0x5dE471FB275858f29ed1C2f7f6452dE5E4A37c47",
-    "faucet": "0x5738c948f54d2e6971AF125f746dA4521821164F",
+    "countersign": "0x364b8AEb5a865Def57D94742506B3645954A07B5",
+    "deployBlock": 10843181,
+    "faucet": "0xFBe8fd0f93ba70F57E39A3Db0e8D4bc38e720159",
     "faucetAmount": 100,
     "faucetCooldown": 86400,
     "guard": "0x54A2d3d4B60eD430BF32765Cf2F5243cd69Fc43a",
-    "label": "preview-v0",
+    "label": "preview-v1",
     "largeTradeThreshold": 250000000,
     "maxDeviationBps": 200,
-    "maxNavAge": 600,
-    "officer": "0x6AAccd3683EA7BF0F680D6d8B8501ef27676e86B",
-    "issuer": "0xA56cb7dBca45FCf1B21ef9172999343447045891",
-    "deployBlock": 10838351
+    "maxNavAge": 7200,
+    "officer": "0x95B48b47e66b2B486b57D9202fd284E759b48020",
+    "issuer": "0xA56cb7dBca45FCf1B21ef9172999343447045891"
   },
   "fusd": "0x97143B771D34ddb9130b807b135Ae675A5a963CA",
   "abi": {

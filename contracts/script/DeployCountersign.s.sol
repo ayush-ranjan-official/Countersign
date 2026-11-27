@@ -18,7 +18,8 @@ import {DemoBondFaucet, IBondMint} from "../src/DemoBondFaucet.sol";
 ///
 /// Config (env, optional): CS_LABEL, CS_OFFICER, CS_THRESHOLD (cash base units), CS_ATTESTOR, CS_MAX_NAV_AGE (s),
 /// CS_MAX_DEV_BPS, FAUCET_AMOUNT, FAUCET_COOLDOWN (s). Defaults: officer = OFFICER account, attestor = ISSUER.
-/// Writes deployments/countersign-<chainid>.json on a real broadcast only.
+/// Reads/writes $DEPLOYMENTS_DIR (default deployments/, the shared team deployment; deployments/local/ for your own
+/// stack, gitignored). Writes countersign-<chainid>.json on a real broadcast only.
 contract DeployCountersign is Script {
     struct Config {
         address bond;
@@ -32,12 +33,19 @@ contract DeployCountersign is Script {
         uint64 faucetCooldown;
     }
 
+    function dir() internal view returns (string memory d) {
+        d = vm.envOr("DEPLOYMENTS_DIR", string("deployments"));
+        if (bytes(d).length == 0) d = "deployments"; // an empty DEPLOYMENTS_DIR= line in .env means the default
+    }
+
     function config(address issuer) internal view returns (Config memory c) {
-        string memory bondJson = vm.readFile(string.concat("deployments/bond-", vm.toString(block.chainid), ".json"));
+        string memory bondJson = vm.readFile(string.concat(dir(), "/bond-", vm.toString(block.chainid), ".json"));
         c.bond = vm.parseJsonAddress(bondJson, ".bond");
         c.guard = vm.parseJsonAddress(bondJson, ".guard");
         c.officer = vm.envOr("CS_OFFICER", vm.addr(vm.envUint("PRIVATE_KEY_OFFICER")));
-        c.attestor = vm.envOr("CS_ATTESTOR", issuer);
+        // default attestor: the dedicated ATTESTOR account (signs NAVs only), else the issuer
+        uint256 attestorKey = vm.envOr("PRIVATE_KEY_ATTESTOR", uint256(0));
+        c.attestor = vm.envOr("CS_ATTESTOR", attestorKey == 0 ? issuer : vm.addr(attestorKey));
         c.threshold = vm.envOr("CS_THRESHOLD", uint256(250e6)); // 250 fUSD
         c.maxNavAge = uint64(vm.envOr("CS_MAX_NAV_AGE", uint256(600)));
         c.maxDevBps = uint16(vm.envOr("CS_MAX_DEV_BPS", uint256(200)));
@@ -77,7 +85,9 @@ contract DeployCountersign is Script {
         vm.serializeUint(o, "maxNavAge", c.maxNavAge);
         vm.serializeUint(o, "maxDeviationBps", c.maxDevBps);
         vm.serializeUint(o, "faucetAmount", c.faucetAmount);
+        // a safe lower bound for event scans (the txs land in a later block than the simulation)
+        vm.serializeUint(o, "deployBlock", block.number > 0 ? block.number - 1 : 0);
         string memory json = vm.serializeUint(o, "faucetCooldown", c.faucetCooldown);
-        vm.writeJson(json, string.concat("deployments/countersign-", vm.toString(block.chainid), ".json"));
+        vm.writeJson(json, string.concat(dir(), "/countersign-", vm.toString(block.chainid), ".json"));
     }
 }

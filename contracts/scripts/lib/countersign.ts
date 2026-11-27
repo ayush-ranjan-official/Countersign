@@ -11,6 +11,8 @@ import { artifactAbi, errorsOf, readDeployment } from "./evm.js";
 
 export interface Deployment {
   label: string;
+  faucetAmount?: number;
+  deployBlock?: number;
   countersign: Hex;
   faucet: Hex;
   bond: Hex;

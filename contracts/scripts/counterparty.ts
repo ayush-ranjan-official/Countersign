@@ -11,7 +11,7 @@
 import { randomBytes } from "node:crypto";
 import { erc20Abi, formatUnits, type Hex } from "viem";
 import { pub } from "./lib/chain.js";
-import { ROLES, loadAccount, type DemoAccount } from "./lib/accounts.js";
+import { localAccountFor, localRoles, loadAccount, type DemoAccount } from "./lib/accounts.js";
 import { send } from "./lib/evm.js";
 import { logTx } from "./lib/demo-log.js";
 import { FUSD } from "./lib/tokens.js";
@@ -26,7 +26,7 @@ const CS = d.countersign;
 const tr = await readView<{ terms: Terms; status: number; sellerAffirmed: boolean; buyerAffirmed: boolean; assetLocked: boolean; cashLocked: boolean }>(CS, "getTrade", [id]);
 if (tr.status !== 1) throw new Error(`trade status is ${tr.status} (1 = Open): open it in the app first`);
 const t = tr.terms;
-const accounts = ROLES.map(loadAccount);
+const accounts = localRoles().map(loadAccount);
 const me = accounts.find((a) => a.evm.toLowerCase() === t.seller.toLowerCase() || a.evm.toLowerCase() === t.buyer.toLowerCase());
 if (!me) throw new Error("no script account is a party to this trade (use SELLER or BUYER as the counterparty in the app)");
 const isSeller = me.evm.toLowerCase() === t.seller.toLowerCase();
@@ -53,8 +53,8 @@ if (fresh.sellerAffirmed && fresh.buyerAffirmed && !(isSeller ? fresh.assetLocke
 }
 
 if (process.argv.includes("--nav")) {
-  const attestor = accounts.find((a) => a.evm.toLowerCase() === d.attestor.toLowerCase());
-  if (!attestor) throw new Error("the deployment's attestor is not a script account");
+  const attestor = localAccountFor(d.attestor);
+  if (!attestor) throw new Error("this deployment's NAV attestor is not on this machine (shared deployment: the hourly GitHub Actions NAV poster posts it; run the workflow to post now)");
   await ensureWindow(attestor, { targets: [CS], txs: 1 }, "NAV");
   const price = t.cashAmount / t.assetAmount;
   const ts = (await pub.getBlock()).timestamp;

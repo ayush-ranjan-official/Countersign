@@ -8,7 +8,7 @@ import { isValidRecoveryCode, unifiedAccountFromSeed, type UnifiedAccount } from
 import type { Hex } from "viem";
 import { fromHex } from "./chain.js";
 
-export const ROLES = ["ISSUER", "SELLER", "BUYER", "OFFICER", "ATTACKER"] as const;
+export const ROLES = ["ISSUER", "SELLER", "BUYER", "OFFICER", "ATTACKER", "ATTESTOR"] as const;
 export type Role = (typeof ROLES)[number];
 
 export interface DemoAccount {
@@ -28,6 +28,22 @@ export function loadAccount(role: Role): DemoAccount {
 }
 
 export const loadAll = () => ROLES.map(loadAccount);
+
+/** Roles whose keys are in this machine's .env (a teammate may hold only some of them). */
+export const localRoles = (): Role[] => ROLES.filter((r) => /^0x[0-9a-fA-F]{64}$/.test(process.env[`PRIVATE_KEY_${r}`]?.trim() ?? ""));
+
+/**
+ * The local demo account behind an on-chain address (officer, attestor, a trade party), or undefined when this
+ * machine does not hold that key. Scripts act only for accounts you hold: in the team's shared deployment the
+ * officer and the NAV attestor are NOT your accounts, in your own stack (deployments/local) they are.
+ */
+export function localAccountFor(address: string): DemoAccount | undefined {
+  for (const r of localRoles()) {
+    const a = loadAccount(r);
+    if (a.evm.toLowerCase() === address.toLowerCase()) return a;
+  }
+  return undefined;
+}
 
 export function roleArg(v: string | undefined, fallback: Role): Role {
   const r = (v ?? fallback).toUpperCase();

@@ -7,11 +7,11 @@
 import { evmWindowStatus } from "@qorechain/evm";
 import { erc20Abi, formatUnits } from "viem";
 import { REST, callPqcKeyStatus, pub } from "./lib/chain.js";
-import { loadAll } from "./lib/accounts.js";
+import { loadAccount, localRoles } from "./lib/accounts.js";
 import { bankBalances } from "./lib/native.js";
 import { FUSD, FUSD_DENOM } from "./lib/tokens.js";
 
-for (const a of loadAll()) {
+for (const a of localRoles().map(loadAccount)) {
   const [bank, st, win, fusd] = await Promise.all([
     bankBalances(a.cosmos),
     callPqcKeyStatus(a.evm),

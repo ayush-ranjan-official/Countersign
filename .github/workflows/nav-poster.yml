@@ -1,0 +1,52 @@
+# Posts a fresh ML-DSA-87-signed NAV for the demo bond every hour, so any trade on the shared Countersign deployment
+# can settle without anyone's laptop being online. Uses a DEDICATED throwaway testnet ATTESTOR key (it can only sign
+# NAVs) stored in the repository secrets; the issuer/admin keys never leave the builder's machine.
+#
+# Setup (repo admin, once): secrets PRIVATE_KEY_ATTESTOR and QORE_PQC_RECOVERY_CODE_ATTESTOR, variable
+# NAV_POSTER_ENABLED=true (optional: NAV_PRICE, fUSD per bond, default 10). See docs/DEVELOPING.md.
+# Free on public repositories. Scheduled runs are best effort (they can start late), hence maxNavAge = 2 h.
+name: nav-poster
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Post even if the current NAV is still fresh"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nav-poster
+  cancel-in-progress: false
+
+jobs:
+  post:
+    if: vars.NAV_POSTER_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: contracts/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Post NAV if the current one is about to go stale
+        run: pnpm nav-poster
+        env:
+          PRIVATE_KEY_ATTESTOR: ${{ secrets.PRIVATE_KEY_ATTESTOR }}
+          QORE_PQC_RECOVERY_CODE_ATTESTOR: ${{ secrets.QORE_PQC_RECOVERY_CODE_ATTESTOR }}
+          NAV_PRICE: ${{ vars.NAV_PRICE || '10' }}
+          NAV_FORCE: ${{ inputs.force && '1' || '' }}

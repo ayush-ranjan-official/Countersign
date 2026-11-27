@@ -17,7 +17,8 @@ import {QoreChainHybridHolderRule} from "asset-kit/cmtat/QoreChainHybridHolderRu
 ///   forge script script/DeployBond.s.sol --rpc-url qorechain_testnet            # dry run
 ///   forge script script/DeployBond.s.sol --rpc-url qorechain_testnet --broadcast --slow
 /// The issuer (PRIVATE_KEY_ISSUER in .env) needs a registered ML-DSA-87 key and an open deploy window
-/// (no allowedTargets: a targeted window refuses contract creation). Writes deployments/bond-<chainid>.json.
+/// (no allowedTargets: a targeted window refuses contract creation). Writes $DEPLOYMENTS_DIR/bond-<chainid>.json
+/// (default deployments/ = the team's shared deployment; deployments/local/ for your own stack, gitignored).
 contract DeployBond is Script {
     function run() external returns (QoreChainHybridHolderGuard guard, QoreChainHybridHolderRule rule, CMTATStandalone bond) {
         require(block.chainid != 9801, "testnet only: the PQC precompiles are not active on mainnet");
@@ -60,6 +61,8 @@ contract DeployBond is Script {
         vm.serializeAddress(o, "guard", address(guard));
         vm.serializeAddress(o, "rule", address(rule));
         string memory json = vm.serializeAddress(o, "bond", address(bond));
-        vm.writeJson(json, string.concat("deployments/bond-", vm.toString(block.chainid), ".json"));
+        string memory dir = vm.envOr("DEPLOYMENTS_DIR", string("deployments"));
+        if (bytes(dir).length == 0) dir = "deployments"; // an empty DEPLOYMENTS_DIR= line in .env means the default
+        vm.writeJson(json, string.concat(dir, "/bond-", vm.toString(block.chainid), ".json"));
     }
 }

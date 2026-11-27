@@ -12,7 +12,7 @@ import { randomBytes } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { erc20Abi, formatUnits, keccak256, toBytes, type Hex } from "viem";
 import { pub } from "./lib/chain.js";
-import { loadAccount } from "./lib/accounts.js";
+import { loadAccount, localAccountFor } from "./lib/accounts.js";
 import { send } from "./lib/evm.js";
 import { logTx } from "./lib/demo-log.js";
 import { FUSD } from "./lib/tokens.js";
@@ -28,6 +28,7 @@ import {
   bondAbi,
   csAbi,
   dep,
+  faucetAbi,
   pqSignData,
   readView,
   tradeIdLocal,
@@ -49,10 +50,10 @@ const d = dep();
 const CS = d.countersign;
 const seller = loadAccount("SELLER");
 const buyer = loadAccount("BUYER");
-const officer = loadAccount("OFFICER");
-const attestor = loadAccount("ISSUER");
-if (d.officer.toLowerCase() !== officer.evm.toLowerCase()) throw new Error("deployment officer is not the OFFICER account");
-if (d.attestor.toLowerCase() !== attestor.evm.toLowerCase()) throw new Error("deployment attestor is not the ISSUER account");
+// Only act for roles this machine holds. In the team's shared deployment the officer and the NAV attestor are not
+// your accounts (the attestor is the GitHub Actions NAV poster); in your own stack (DEPLOYMENTS_DIR=deployments/local) they are.
+const officer = localAccountFor(d.officer);
+const attestor = localAccountFor(d.attestor);
 
 const step = async (label: string, who: typeof seller, call: Parameters<typeof send>[1]) => {
   const r = await send(who, call, allErrors);
@@ -64,16 +65,41 @@ const bal = (token: Hex, who: Hex) => pub.readContract({ address: token, abi: er
 
 console.log(`Countersign ${CS} (${d.label})`);
 console.log(`trade: ${assetAmount} bonds for ${formatUnits(cashAmount, 6)} fUSD; four-eyes threshold ${formatUnits(BigInt(d.largeTradeThreshold), 6)} fUSD`);
+console.log(`officer ${d.officer} (${officer ? `yours: ${officer.role}` : "not yours"}), NAV attestor ${d.attestor} (${attestor ? `yours: ${attestor.role}` : "not yours: the shared NAV poster"})`);
+
+// ---- 0. preflight before ANY transaction, so funds are never locked into a trade that cannot settle
+const needsOfficer = await readView<boolean>(CS, "requiresOfficer", [cashAmount]);
+if (needsOfficer && !officer) {
+  throw new Error(`a ${formatUnits(cashAmount, 6)} fUSD trade needs the officer (${d.officer}), whose key is not on this machine: use a smaller trade, ask the officer to approve it in the web app, or use your own stack (docs/DEVELOPING.md)`);
+}
+if (!attestor) {
+  const [navPrice, navTs] = await readView<readonly [bigint, bigint]>(CS, "latestNav", [d.bond, FUSD]);
+  const now = (await pub.getBlock()).timestamp;
+  const left = navTs + BigInt(d.maxNavAge) - now;
+  const fair = navPrice * assetAmount;
+  const off = fair === 0n ? Infinity : Number(((cashAmount > fair ? cashAmount - fair : fair - cashAmount) * 10_000n) / fair);
+  if (navTs === 0n || left < 300n) throw new Error(`the shared NAV is ${navTs === 0n ? "missing" : `fresh for only ${left}s more`}: wait for the hourly NAV poster or run it (GitHub Actions → nav-poster → Run workflow)`);
+  if (off > d.maxDeviationBps) throw new Error(`price ${formatUnits(pricePerBond, 6)} is ${off / 100}% from the NAV ${formatUnits(navPrice, 6)} fUSD/bond (band ${d.maxDeviationBps / 100}%): use --price ${formatUnits(navPrice, 6)}`);
+  console.log(`  shared NAV ${formatUnits(navPrice, 6)} fUSD/bond, fresh for ${left}s more`);
+}
 
 // ---- 1. scoped windows (M4)
 const targets = [CS, d.bond, FUSD];
 await ensureWindow(seller, { targets, txs: 5 }, "trade");
 await ensureWindow(buyer, { targets, txs: 5 }, "trade");
-await ensureWindow(attestor, { targets: [CS], txs: 2 }, "NAV");
+if (attestor) await ensureWindow(attestor, { targets: [CS], txs: 2 }, "NAV");
 
 // ---- 2. funds: bonds on SELLER, ERC-20 fUSD on BUYER (convert from bank fUSD if short)
-const sellerBonds = (await bal(d.bond, seller.evm)) as bigint;
-if (sellerBonds < assetAmount) throw new Error(`SELLER holds ${sellerBonds} bonds, needs ${assetAmount}`);
+let sellerBonds = (await bal(d.bond, seller.evm)) as bigint;
+if (sellerBonds < assetAmount) {
+  // self-serve: claim demo bonds from the faucet (needs a proven ML-DSA key; once per cooldown)
+  console.log(`  SELLER holds ${sellerBonds} bonds: claiming ${d.faucetAmount ?? "?"} from the demo bond faucet`);
+  await ensureWindow(seller, { targets: [d.faucet], txs: 1 }, "faucet");
+  await step("claim demo bonds from the faucet", seller, { address: d.faucet, abi: faucetAbi, functionName: "claim", args: [] });
+  await ensureWindow(seller, { targets, txs: 5 }, "trade");
+  sellerBonds = (await bal(d.bond, seller.evm)) as bigint;
+  if (sellerBonds < assetAmount) throw new Error(`SELLER holds ${sellerBonds} bonds after the faucet, needs ${assetAmount}`);
+}
 const buyerCash = (await bal(FUSD, buyer.evm)) as bigint;
 if (buyerCash < cashAmount) {
   const need = cashAmount - buyerCash;
@@ -142,7 +168,7 @@ for (const [name, token, owner] of [["bond", d.bond, seller.evm], ["fUSD", FUSD,
 }
 
 // ---- 7. four-eyes (S1)
-if (await readView<boolean>(CS, "requiresOfficer", [cashAmount])) {
+if (needsOfficer && officer) {
   const approveData = await readView<string>(CS, "approveData", [id]);
   if (approveData !== approveDataLocal(id)) throw new Error("approveData mismatch");
   console.log(`  large trade: OFFICER signs "${approveData}", BUYER relays it`);
@@ -151,7 +177,8 @@ if (await readView<boolean>(CS, "requiresOfficer", [cashAmount])) {
   });
 }
 
-// ---- 8. fresh NAV signed by the attestor (S2)
+// ---- 8. fresh NAV signed by the attestor (S2); in the shared deployment the hourly NAV poster provides it
+if (attestor) {
 const navTs = (await pub.getBlock()).timestamp;
 const nonce = BigInt(`0x${randomBytes(8).toString("hex")}`);
 const navData = await readView<string>(CS, "navData", [d.bond, FUSD, pricePerBond, navTs, nonce]);
@@ -159,6 +186,7 @@ console.log(`  attestor signs "${navData}"`);
 await step(`postNav ${formatUnits(pricePerBond, 6)} fUSD/bond`, attestor, {
   address: CS, abi: csAbi, functionName: "postNav", args: [d.bond, FUSD, pricePerBond, navTs, nonce, pqSignData(attestor, navData)],
 });
+}
 
 // ---- 9. settle: both legs in one tx
 const before = { buyerBonds: (await bal(d.bond, buyer.evm)) as bigint, sellerCash: (await bal(FUSD, seller.evm)) as bigint };

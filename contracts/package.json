@@ -24,7 +24,10 @@
     "deploy:countersign": "forge script script/DeployCountersign.s.sol --rpc-url qorechain_testnet --broadcast --slow",
     "trade": "tsx --env-file=.env scripts/trade.ts",
     "attack": "tsx --env-file=.env scripts/attack.ts",
-    "counterparty": "tsx --env-file=.env scripts/counterparty.ts"
+    "counterparty": "tsx --env-file=.env scripts/counterparty.ts",
+    "nav-poster": "tsx --env-file-if-exists=.env scripts/nav-poster.ts",
+    "deploy:own:bond": "DEPLOYMENTS_DIR=deployments/local FOUNDRY_BROADCAST=deployments/local/broadcast forge script script/DeployBond.s.sol --rpc-url qorechain_testnet --broadcast --slow",
+    "deploy:own:countersign": "DEPLOYMENTS_DIR=deployments/local FOUNDRY_BROADCAST=deployments/local/broadcast forge script script/DeployCountersign.s.sol --rpc-url qorechain_testnet --broadcast --slow"
   },
   "dependencies": {
     "@cosmjs/proto-signing": "^0.39.0",

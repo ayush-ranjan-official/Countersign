@@ -21,6 +21,12 @@ app/         Vite + React + wagmi web app (QoreX wallet)
 docs/        THREAT_MODEL, AUDIT, DEMO, ARCHITECTURE, audit reports
 ```
 
+## Try it / work on it
+
+- **Use the app:** each user brings their own QoreX wallet. Nobody shares keys. The app checks your wallet and tells you what is missing.
+- **Contribute:** clone, run `pnpm keygen` for your own throwaway testnet accounts, and follow [docs/DEVELOPING.md](docs/DEVELOPING.md). There you can use the shared team deployment, or deploy your own stack where you hold every role.
+- **Shared deployment:** NAV prices are posted every hour by a GitHub Actions job ([nav-poster](.github/workflows/nav-poster.yml)) with a dedicated attestor key.
+
 ## Credits
 Countersign builds on the following open-source work. See [NOTICE](NOTICE) for the licences.
 

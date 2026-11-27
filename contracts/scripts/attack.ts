@@ -15,7 +15,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { generatePqcKeypair, pqcSign } from "@qorechain/sdk";
 import { messagePqSignBytes } from "@qorechain/qoresign";
 import { pub, toHex } from "./lib/chain.js";
-import { loadAccount, type DemoAccount } from "./lib/accounts.js";
+import { loadAccount, localAccountFor, type DemoAccount } from "./lib/accounts.js";
 import { FEES, send, simulate, walletFor, type Call } from "./lib/evm.js";
 import { logTx, logNote } from "./lib/demo-log.js";
 import { FUSD, FUSD_DENOM } from "./lib/tokens.js";
@@ -30,6 +30,7 @@ const seller = loadAccount("SELLER");
 const buyer = loadAccount("BUYER");
 const issuer = loadAccount("ISSUER");
 const attacker = loadAccount("ATTACKER");
+const attestor = localAccountFor(d.attestor); // A7 needs to post an off-band NAV: only in your own stack
 const PRICE = 10_000_000n; // 10 fUSD per bond
 
 let failures = 0;
@@ -84,7 +85,7 @@ console.log(`Countersign ${CS} (${d.label}); attacker holds the SELLER's and BUY
 const targets = [CS, d.bond, FUSD];
 await ensureWindow(seller, { targets, txs: 6, blocks: 1200 }, "attack demo");
 await ensureWindow(buyer, { targets, txs: 6, blocks: 1200 }, "attack demo");
-await ensureWindow(issuer, { targets: [CS], txs: 2, blocks: 1200 }, "attack demo NAV");
+if (attestor) await ensureWindow(attestor, { targets: [CS], txs: 2, blocks: 1200 }, "attack demo NAV");
 await ensureWindow(attacker, { targets: [CS], txs: 3, blocks: 1200 }, "attack demo");
 
 const LARGE = BigInt(d.largeTradeThreshold); // exactly the four-eyes threshold
@@ -196,6 +197,12 @@ console.log(`${onchain ? "BLOCKED" : "FAIL   "}: A1 on chain, tx ${hash} status=
 logTx("attack A1 BROADCAST: forged ML-DSA affirmation by the ATTACKER (expected to revert)", hash, `${rc.status} (${replay.ok ? "?" : replay.reason}), gasUsed ${rc.gasUsed}`);
 
 // ---------------------------------------------------------------- A7 stale and off-band NAV (trade Y)
+if (!attestor || d.maxNavAge > 900) {
+  const why = !attestor ? "the NAV attestor of this deployment is not on this machine" : `maxNavAge is ${d.maxNavAge}s (too long to wait)`;
+  const line = `SKIPPED: A7 on chain (${why}); run it in your own stack (docs/DEVELOPING.md). Foundry: test_nav_*`;
+  console.log(line);
+  results.push(line);
+} else {
 const [, lastTs] = (await readView<readonly [bigint, bigint]>(CS, "latestNav", [d.bond, FUSD]));
 await waitUntil(lastTs + BigInt(d.maxNavAge), `for the last NAV to pass maxNavAge (${d.maxNavAge}s)`);
 await expectBlocked("A7", "settle with a stale NAV", attacker, { address: CS, abi: csAbi, functionName: "settle", args: [Y.id] }, "NavStale");
@@ -203,10 +210,11 @@ const offTs = (await pub.getBlock()).timestamp;
 const offNonce = BigInt(`0x${randomBytes(8).toString("hex")}`);
 const offPrice = PRICE * 2n; // the attestor's fresh NAV says 20 fUSD/bond; the trade is at 10
 const offData = await readView<string>(CS, "navData", [d.bond, FUSD, offPrice, offTs, offNonce]);
-await step(`postNav ${formatUnits(offPrice, 6)} fUSD/bond (fresh, but far from the trade price)`, issuer,
-  { address: CS, abi: csAbi, functionName: "postNav", args: [d.bond, FUSD, offPrice, offTs, offNonce, pqSignData(issuer, offData)] });
+await step(`postNav ${formatUnits(offPrice, 6)} fUSD/bond (fresh, but far from the trade price)`, attestor,
+  { address: CS, abi: csAbi, functionName: "postNav", args: [d.bond, FUSD, offPrice, offTs, offNonce, pqSignData(attestor, offData)] });
 await expectBlocked("A7", "settle at 10 fUSD/bond when the fresh NAV is 20 (band 2 %)", attacker,
   { address: CS, abi: csAbi, functionName: "settle", args: [Y.id] }, "PriceOutOfBand");
+}
 
 // ---------------------------------------------------------------- A4 after the deadline: anyone triggers reclaim, owners get paid
 await waitUntil(X.t.deadline > Y.t.deadline ? X.t.deadline : Y.t.deadline, "for trades X and Y to pass their deadline");
@@ -226,5 +234,5 @@ for (const T of [X, Y]) {
   logTx(`attack A4 reclaim ${T.id.slice(0, 10)} triggered by the ATTACKER after the deadline`, r.hash, `${r.receipt.status}; seller +${sb2 - sb} bonds, buyer +${formatUnits(bc2 - bc, 6)} fUSD, attacker +0`);
 }
 
-console.log(`\n${results.length} checks, ${failures} failed`);
+console.log(`\n${results.length} checks (${results.filter((r) => r.startsWith("SKIPPED")).length} skipped), ${failures} failed`);
 process.exitCode = failures ? 1 : 0;

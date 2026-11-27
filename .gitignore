@@ -36,3 +36,7 @@ contracts/tickets/
 
 # browser automation artefacts
 .playwright-mcp/
+
+# a developer's own deployment stack (DEPLOYMENTS_DIR=deployments/local) and the app config generated from it
+contracts/deployments/local/
+app/src/generated/contracts.local.json

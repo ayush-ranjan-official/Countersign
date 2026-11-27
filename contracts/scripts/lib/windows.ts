@@ -14,7 +14,10 @@ const norm = (xs: readonly string[]) => xs.map((x) => x.toLowerCase()).sort().jo
 export interface WindowSpec {
   /** Recipients the window admits; empty = unscoped (deploys only). */
   targets: readonly string[];
+  /** Transactions still needed (ensureWindow reuses a live window that has at least this many left). */
   txs: number;
+  /** Size of a newly opened window, if larger than `txs` (e.g. a long-lived window reused across runs). */
+  openTxs?: number;
   blocks?: number;
   /** Per-tx gas cap used to size maxValue (value is 0 for every Countersign tx). */
   gas?: bigint;
@@ -23,7 +26,7 @@ export interface WindowSpec {
 /** Open a window, simulate first, wait for the EVM nonce to settle. Returns the opening tx hash. */
 export async function openWindow(a: DemoAccount, spec: WindowSpec, label = ""): Promise<string> {
   const blocks = BigInt(spec.blocks ?? 600);
-  const maxTxs = BigInt(spec.txs);
+  const maxTxs = BigInt(spec.openTxs ?? spec.txs);
   const gas = spec.gas ?? 1_500_000n;
   const maxValue = evmWindowCost({ gas, maxFeePerGas: 250_000_000_000n }) * maxTxs;
   const msg = openEvmWindowMsg({

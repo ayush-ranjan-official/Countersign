@@ -167,3 +167,27 @@ Commits written with the AI carry a `Co-Authored-By: Claude` trailer.
   1. **Relay party:** a relayed affirmation first guessed the signer as "whoever has not affirmed yet". That would have sent a buyer's signature as the seller's (`BadPqcSignature`). Caught on review; the party is now encoded in the link.
   2. **NAV check on closed trades:** the trade page showed a red check for a settled trade (today's price is irrelevant after settlement) and said "no NAV" while still loading. Caught in the browser screenshot; fixed.
 - **MCP / tools used:** Playwright (browser screenshots and evaluate), JSON-RPC checks of the `eth_getLogs` limit and block time.
+
+### T9: Team-ready repo: every feature with your own addresses (27 Nov 2026)
+- **Asked:** "Teammates will clone this code and continue the work, so make it such that they can access all features with their own addresses."
+- **AI generated:**
+  - **Role-aware scripts:**
+    - `localAccountFor` / `localRoles` in `scripts/lib/accounts.ts`.
+    - `trade.ts` checks before any tx (officer key present, shared NAV fresh and in band) and claims demo bonds from the faucet when short.
+    - `attack.ts` skips A7 when the attestor is not local.
+    - `counterparty.ts`, `accounts`, `register all` and `window status all` cover only the roles this machine holds.
+  - **Deployment profiles:**
+    - `DEPLOYMENTS_DIR` (shared `deployments/` or gitignored `deployments/local/`), honoured by both forge scripts. An empty value means the default.
+    - `FOUNDRY_BROADCAST` per profile; `pnpm deploy:own:*`.
+    - `deployBlock` recorded by the script.
+    - The app's `sync-contracts` and `VITE_DEPLOYMENT=local` follow the same profile.
+  - **ATTESTOR role** (`0x0B6E…738d`), funded with 20 QOR and registered with proof of possession.
+  - **`scripts/nav-poster.ts` and `.github/workflows/nav-poster.yml`:** hourly, plus manual; inline ABI, so CI needs no forge build; skips while the NAV is fresh; one long scoped window per ~6.8 h.
+  - **Shared deployment preview-v1:** same v0 code; officer = the builder's QoreX, attestor = ATTESTOR, maxNavAge 2 h. preview-v0 was retired (faucet MINTER_ROLE revoked, Countersign exemption removed); both verified on chain.
+  - **Repository secrets and variables** set through `gh` as the repo owner: the ATTESTOR key and recovery code, `NAV_POSTER_ENABLED`, `NAV_PRICE`.
+  - **Docs and setup:** `docs/DEVELOPING.md`, `contracts/.env.example`, `app/.env.example`, a committed `.githooks/pre-commit`, a README contributor section, CLAUDE.md §0 team note.
+- **Human reviewed / changed:** the builder asked for the team setup and had approved the GitHub Actions NAV design (dedicated key in GitHub Secrets) in T8.
+- **AI mistakes and how they were caught:**
+  1. **Window sizing:** `ensureWindow` used one number for both "txs needed" and "window size", so the poster would have reopened a tiny window almost every run. Caught on review; split into `txs` and `openTxs`.
+  2. **Empty env var:** an empty `DEPLOYMENTS_DIR=` copied from `.env.example` would have made forge write deployment files to the filesystem root (forge auto-loads `.env`). Caught on review; empty now means the default.
+- **MCP / tools used:** `gh` (secrets and variables), JSON-RPC and `cast` checks of roles and exemptions.

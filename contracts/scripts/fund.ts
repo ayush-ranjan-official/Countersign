@@ -18,6 +18,7 @@ const plan: Record<Exclude<Role, "ISSUER">, { qor: number; fusd: number }> = {
   BUYER: { qor: 8, fusd: 500 },
   OFFICER: { qor: 2, fusd: 0 },
   ATTACKER: { qor: 2, fusd: 0 },
+  ATTESTOR: { qor: 4, fusd: 0 }, // signs and posts NAVs (own-stack mode, or the team's GitHub Actions poster)
 };
 const units = (n: number) => BigInt(Math.round(n * 1e6)).toString();
 
@@ -27,6 +28,7 @@ console.log(`ISSUER ${issuer.cosmos}: ${bank.uqor ?? 0} uqor, ${bank[FUSD_DENOM]
 
 const msgs: EncodeObject[] = [];
 for (const [role, def] of Object.entries(plan) as [Exclude<Role, "ISSUER">, { qor: number; fusd: number }][]) {
+  if (process.env.FUND_ONLY && !process.env.FUND_ONLY.split(",").includes(role)) continue;
   const qor = Number(process.env[`FUND_QOR_${role}`] ?? def.qor);
   const fusd = Number(process.env[`FUND_FUSD_${role}`] ?? def.fusd);
   const to = loadAccount(role);

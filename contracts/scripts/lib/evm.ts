@@ -27,7 +27,8 @@ export function artifactAbi(file: string, name: string): Abi {
 }
 
 export function readDeployment<T = Record<string, Hex>>(name: string): T {
-  const p = resolve(import.meta.dirname, "../../deployments", `${name}-9800.json`);
+  const dir = process.env.DEPLOYMENTS_DIR?.trim() || "deployments"; // deployments/ = shared team stack; deployments/local = yours
+  const p = resolve(import.meta.dirname, "../..", dir, `${name}-9800.json`);
   if (!existsSync(p)) throw new Error(`missing ${p}: deploy first`);
   return JSON.parse(readFileSync(p, "utf8")) as T;
 }

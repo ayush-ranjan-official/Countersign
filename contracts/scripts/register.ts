@@ -8,12 +8,12 @@
  */
 import { buildRegisterPqcKeyMsg, signProofOfPossession } from "@qorechain/sdk";
 import { NATIVE_CHAIN_ID, callPqcKeyStatus, toHex } from "./lib/chain.js";
-import { ROLES, loadAccount, roleArg, type Role } from "./lib/accounts.js";
+import { localRoles, loadAccount, roleArg, type Role } from "./lib/accounts.js";
 import { bankBalances, sendNative } from "./lib/native.js";
 import { logTx } from "./lib/demo-log.js";
 
 const arg = process.argv[2] ?? "ISSUER";
-const roles: Role[] = arg.toLowerCase() === "all" ? [...ROLES] : [roleArg(arg, "ISSUER")];
+const roles: Role[] = arg.toLowerCase() === "all" ? localRoles() : [roleArg(arg, "ISSUER")];
 const dryRun = process.argv.includes("--dry-run");
 
 for (const role of roles) {

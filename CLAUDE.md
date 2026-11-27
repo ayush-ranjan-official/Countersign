@@ -16,6 +16,12 @@
 - **Project page:** https://build.qorechain.io/p/countersign. Members listed: @Adithya2310, @ayush-ranjan-official, @anynomousfriend. All listed members must stay fully registered (§3a).
 - **Pitch:** "QoreChain's own Asset Kit says DvP settlement is missing on EVM. Countersign builds it: atomic bond-for-cash settlement in which every approval carries a post-quantum signature verified on chain, so a stolen or broken classical key cannot forge a trade."
 
+- **Team (added 27 Nov, builder's request):** teammates clone the repo and continue the work with **their own** throwaway accounts (`pnpm keygen`) and their own QoreX wallets, never the builder's keys.
+  - Setup: [`docs/DEVELOPING.md`](docs/DEVELOPING.md). There are two modes: the shared team deployment (`contracts/deployments/`, committed) or your own stack (`DEPLOYMENTS_DIR=deployments/local`, gitignored).
+  - Scripts act only for roles whose keys are local (`localAccountFor`).
+  - Enable the secret-blocking hook with `git config core.hooksPath .githooks`.
+  - Each teammate logs their tasks in `AI_USAGE.md`.
+
 ---
 
 ## 1. Why this project (decided: do not revisit)

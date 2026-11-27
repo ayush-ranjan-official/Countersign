@@ -14,7 +14,7 @@
 import { openEvmWindowMsg } from "@qorechain/sdk";
 import { evmWindowCost, evmWindowStatus } from "@qorechain/evm";
 import { REST } from "./lib/chain.js";
-import { ROLES, loadAccount, roleArg, type Role } from "./lib/accounts.js";
+import { localRoles, loadAccount, roleArg, type Role } from "./lib/accounts.js";
 import { sendNative } from "./lib/native.js";
 import { logTx } from "./lib/demo-log.js";
 
@@ -57,7 +57,7 @@ async function open(role: Role) {
 }
 
 const [cmd = "status", who] = argv;
-if (cmd === "status") await status(!who || who.toLowerCase() === "all" ? [...ROLES] : [roleArg(who, "ISSUER")]);
+if (cmd === "status") await status(!who || who.toLowerCase() === "all" ? localRoles() : [roleArg(who, "ISSUER")]);
 else if (cmd === "open") await open(roleArg(who, "ISSUER"));
 else {
   console.error("Use: status [ROLE|all] | open ROLE (--deploy | --targets 0x..,0x..)");

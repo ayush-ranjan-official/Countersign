@@ -1,5 +1,12 @@
 import { erc20Abi, type Abi, type Address } from "viem";
-import generated from "../generated/contracts.json";
+import shared from "../generated/contracts.json";
+
+// VITE_DEPLOYMENT=local switches to your own stack (src/generated/contracts.local.json, gitignored; see docs/DEVELOPING.md)
+const local = import.meta.glob("../generated/contracts.local.json", { eager: true, import: "default" });
+const wantLocal = import.meta.env.VITE_DEPLOYMENT === "local";
+const localFile = Object.values(local)[0] as typeof shared | undefined;
+if (wantLocal && !localFile) throw new Error("VITE_DEPLOYMENT=local but src/generated/contracts.local.json is missing: run DEPLOYMENTS_DIR=deployments/local pnpm sync-contracts");
+const generated: typeof shared = wantLocal && localFile ? localFile : shared;
 
 export const CHAIN_ID = 9800;
 export const NATIVE_CHAIN_ID = "qorechain-diana";

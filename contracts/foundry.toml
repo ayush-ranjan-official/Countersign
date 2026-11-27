@@ -5,12 +5,34 @@ libs = ["lib"]
 test = "test"
 script = "script"
 solc_version = "0.8.28"
+# QoreChain EVM: Shanghai, Cancun and Prague active; Osaka is not.
+evm_version = "cancun"
 optimizer = true
 optimizer_runs = 200
-remappings = ["forge-std/=lib/forge-std/src/"]
+fs_permissions = [{ access = "read", path = "./out" }, { access = "read-write", path = "./deployments" }]
+
+# Only the CMTAT path of the Asset Kit is used (Apache-2.0 kit + MPL-2.0 CMTAT,
+# both unmodified submodules). The ERC-3643/T-REX path (GPL-3.0) is never imported.
+remappings = [
+  "forge-std/=lib/forge-std/src/",
+  "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+  "@openzeppelin/contracts-upgradeable/=lib/qorechain-asset-kit/contracts/lib/openzeppelin-contracts-upgradeable/contracts/",
+  "CMTAT/=lib/qorechain-asset-kit/contracts/lib/CMTAT/contracts/",
+  "asset-kit/=lib/qorechain-asset-kit/contracts/src/",
+]
+
+[fuzz]
+runs = 512
+
+[invariant]
+runs = 128
+depth = 64
+fail_on_revert = false
 
 # Public QoreChain EVM endpoints. Use them by name:
 #   forge script ... --rpc-url qorechain_testnet
 [rpc_endpoints]
-qorechain = "https://evm.qore.host"
 qorechain_testnet = "https://evm-testnet.qore.host"
+
+[fmt]
+line_length = 120

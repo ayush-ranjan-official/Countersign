@@ -140,6 +140,22 @@
 - **S2 Fair-price / NAV check:** the attestor posts an ML-DSA-signed NAV (asset, price per unit in cash base units, timestamp, nonce). `settle` requires `age <= maxNavAge` and a deviation of at most `maxDeviationBps` between the trade price and the NAV. Skip the check if the attestor is `address(0)`.
 - **S3 Sealed trade ticket (QoreSeal, ML-KEM-1024):** the full ticket JSON (terms, ISIN-style id, settlement notes, salt) is sealed to the seller, the buyer and an auditor. The on-chain `ticketHash = keccak256(plaintextTicket)` sits inside Terms, so recipients can check what they decrypted. Publish the envelope in an event `TicketSealed(tradeId, envelope)` or as a file. Say honestly that amounts and addresses become public at settlement.
 
+**SELF-SERVE (decided by the builder on 27 Nov 2026: "anyone with a wallet can use the app, without me sharing any keys")**
+
+Anyone with QoreX must be able to use the hosted app end to end, with no address collection and no shared keys. This shapes M1 (contract) and M8 (app):
+- **Readiness check in the app** (automates the manual address checks). It covers:
+  - a coin-60 account
+  - an ML-DSA key that is registered and possession-proven, read with `eth_call` to `0x…0a02` (the EVM RPC allows CORS `*`)
+  - QOR and fUSD balances
+  - a "convert fUSD" step. Whether QoreX signs `MsgConvertCoin` from a site is untested; the fallback is instructions.
+  - a faucet link when funds are missing
+- **Trades by shareable link** (terms encoded in the URL) **plus on-chain discovery:** the first affirmation emits `TradeOpened(tradeId, seller indexed, buyer indexed, terms)`. "My trades" is built from `getLogs`. This adds an event only, no new powers.
+- **Demo bond faucet** (`DemoBondFaucet`): the issuer grants it CMTAT `MINTER_ROLE`. Any wallet the guard accepts as a hybrid holder can claim a fixed amount of the demo bond once per 24 h. The guard still refuses wallets without a PQ key. It is clearly labelled as a testnet demo, not issuance, and not an issuer console.
+- **Officer and NAV attestor sign in the app** with QoreX `signArbitrary`; anyone may submit their signatures. Their addresses are immutable constructor parameters, so choose them before the final deploy.
+- **NAV freshness for a public app:** size `maxNavAge` for real use (e.g. 24 h). The posting cadence is to be decided: in-app by the attestor, or a scheduled script.
+- **Hosting:** public HTTPS, plus a rewrite proxy for the REST API (it sends no CORS headers). The EVM RPC needs no proxy.
+- **Order:** the contract parts go into M1 before the Stage 1 audit; the app parts into M8. The builder asked to wait for S-2 (QoreX `signArbitrary` → `pqcVerify`) before any contract work, because in-app signing depends on it.
+
 **NICE (only if time is left)**
 - **N1** Counterparty by @handle (`@qorechain/handles`).
 - **N2** Public receipt-verifier page.

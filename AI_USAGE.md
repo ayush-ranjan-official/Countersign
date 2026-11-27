@@ -69,3 +69,18 @@ Commits written with the AI carry a `Co-Authored-By: Claude` trailer.
   2. **Loose gas limit:** a fixed 1.5M gas limit made the S-3 lock receipt show exactly 750,000 gas. The fee market's `min_gas_multiplier = 0.5` charges at least half the limit, so we overpaid and the receipt didn't show the real cost. Writes now use `eth_estimateGas` + 25%. Recorded in CLAUDE.md §7.
   3. **Wrong gas figures in CLAUDE.md:** §7 said registration is ≈600k gas / ≈0.09 QOR; it measured ≈297k gas / ≈0.038 QOR. `MsgConvertCoin` measured 449.5k gas against ≈432k. Both corrected from the real runs.
 - **MCP / tools used:** REST (`txs`, `bank/balances`, `evm_window`, `feemarket/params`, `simulate`), JSON-RPC (`eth_call` to the precompiles, `eth_estimateGas`, receipts), `cast codesize` / `cast call` to check the deployed code and owners. The QoreChain MCP server is not loaded in this session yet.
+
+### T4: Builder's address checked; self-serve decision (27 Nov 2026)
+- **Asked:**
+  - Check the builder's own testnet address for S-2.
+  - Then a product question: "from the user perspective, collecting all the addresses is not user-friendly; can anyone with their wallet just use the deployed app?"
+- **AI generated:**
+  - A read-only check of `qor1jk6gk3lxdv45s66hmyszl55yuavmfqpq692s4n` with the QoreChain MCP (`get_address_info`, `get_pq_status`, and `read_contract` on the `0x…0a02` precompile). Result: ML-DSA-87 registered, possession proven, 2,592-byte key, 99.85 QOR. It is a `secp256k1` (coin-118) account: fine for S-2, but it can't send EVM txs.
+  - A CORS check: the EVM RPC allows `*`, the REST API sends no CORS headers.
+  - A self-serve design: in-app readiness check, trades by link plus a `TradeOpened` event, a demo bond faucet, in-app officer and attestor signing.
+  - Added that design to CLAUDE.md §4 (SELF-SERVE).
+- **Human reviewed / changed:**
+  - The builder made the call: build the fully self-serve version ("anyone can use this app, without me needing to share any keys"). This changes M1 and M8.
+  - The builder chose to wait for S-2 before any contract work.
+- **AI mistakes and how they were caught:** none in this step.
+- **MCP / tools used:** QoreChain MCP `get_address_info`, `get_pq_status`, `read_contract` (first use after the session restart loaded `.mcp.json`).

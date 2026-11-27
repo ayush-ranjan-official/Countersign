@@ -9,10 +9,21 @@
     "build": "forge build",
     "test": "forge test",
     "window": "tsx --env-file=.env scripts/window.ts",
-    "deploy:testnet": "forge script script/Counter.s.sol --rpc-url qorechain_testnet --broadcast",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "keygen": "tsx scripts/keygen.ts",
+    "accounts": "tsx --env-file=.env scripts/accounts.ts",
+    "spike:s1": "tsx --env-file-if-exists=.env scripts/spike-s1.ts",
+    "register": "tsx --env-file=.env scripts/register.ts",
+    "fund": "tsx --env-file=.env scripts/fund.ts",
+    "convert-fusd": "tsx --env-file=.env scripts/convert-fusd.ts",
+    "spike:s2": "tsx scripts/spike-s2.ts",
+    "spike:s3": "tsx --env-file=.env scripts/spike-s3.ts",
+    "spike:s5": "tsx --env-file=.env scripts/spike-s5.ts",
+    "deploy:bond": "forge script script/DeployBond.s.sol --rpc-url qorechain_testnet --broadcast --slow",
+    "deploy:spike-escrow": "forge script script/DeploySpikeEscrow.s.sol --rpc-url qorechain_testnet --broadcast --slow"
   },
   "dependencies": {
+    "@cosmjs/proto-signing": "^0.39.0",
     "@cosmjs/stargate": "^0.39.0",
     "@qorechain/evm": "^0.14.0",
     "@qorechain/qoresign": "^0.2.0",

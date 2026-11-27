@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@cosmjs/proto-signing':
+        specifier: ^0.39.0
+        version: 0.39.0
       '@cosmjs/stargate':
         specifier: ^0.39.0
         version: 0.39.0

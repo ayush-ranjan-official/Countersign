@@ -117,3 +117,18 @@ Commits written with the AI carry a `Co-Authored-By: Claude` trailer.
   3. **Invariant harness:** the first invariant run showed handler-level reverts. A fail-on-revert run traced them to the fuzzer calling the setup-only `addTrade` with `assetAmount = 0` (division by zero in the handler). Fixed with `targetSelector`.
   4. **Lint leftover:** an earlier BSD `sed` with `\|` had silently not removed two imports from the smoke test. Caught by a forge lint note.
 - **MCP / tools used:** none new (local Foundry work).
+
+### T7: Preview deploy, full trades and the attack drill on testnet, M7 (27 Nov 2026)
+- **Asked:** keep building while the Stage 1 audit waits for the free daily audit (the builder had 100 test QOR; an extra audit costs 150). The builder also asked whether the audit is required: the official Prizes page lists "two-stage QCAI audit" as a category main requirement; it is not one of the hard exclusion checks, and its score is not fed into judging (FAQ). Recorded in CLAUDE.md §3c, along with the official rubric weights CLAUDE.md had called "not published".
+- **AI generated:**
+  - `script/DeployCountersign.s.sol` and the preview-v0 deploy: Countersign `0x5dE4…7c47`, faucet `0x5738…164F`, plus the guard exemption and faucet MINTER_ROLE, all verified on chain.
+  - `scripts/trade.ts`: two trades settled on testnet: 10 bonds/100 fUSD, and 30 bonds/300 fUSD with the officer's ML-DSA approval.
+  - `scripts/attack.ts`: **21 checks, 0 failed** against the real precompiles. This includes the real A1 tx `0x9c13e13d…` (mined, reverted `BadPqcSignature`) and attacker-triggered reclaims that paid only the owners.
+  - Shared libs: `scripts/lib/{windows,convert,countersign}.ts`.
+  - Docs: `docs/THREAT_MODEL.md`, `docs/AUDIT.md` (PQ design; Stage 1 table pending), `docs/ARCHITECTURE.md`.
+  - Run log: `docs/runs/attack-2026-11-27.log`.
+- **Human reviewed / changed:** decided on the audit timing.
+- **AI mistakes and how they were caught:**
+  1. **Stack too deep:** `DeployCountersign.s.sol` failed to compile. Fixed by refactoring the script into a config struct, not by switching the compiler to `via-ir` (which would change how the audited contract compiles).
+  2. **Missing npm script:** I ran `pnpm deploy:countersign` before adding it to package.json. My own grep filter hid the pnpm error, so the first "deploy" did nothing. I noticed it because `deployments/countersign-9800.json` was missing. A deploy window had already been opened (tx `EE139C4E…`); it was reused for the real deploy.
+- **MCP / tools used:** JSON-RPC `eth_call` (simulations run the real precompiles), receipts, `cast codesize` / `cast call` checks, REST bank and window reads. The official rules, prizes and FAQ pages were read through a web-fetch agent.

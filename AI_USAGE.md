@@ -209,3 +209,13 @@ Commits written with the AI carry a `Co-Authored-By: Claude` trailer.
   - **Compiler warnings:** the fresh clone's `forge build` printed warnings the local cached build had hidden (test helpers that could be `pure`). Fixed; the build now has 0 compiler warnings.
   - **Lint notes on `src/`:** the notes left on `src/` are style only (immutable naming, `asm-keccak256`, named struct fields). They were not changed, because `src/` must stay identical to the Stage 1 draft; they are noted for after the audit.
 - **MCP / tools used:** git, pnpm, forge, the scripts above; GitHub Actions run 45980513758 (via `gh`).
+
+### UI redesign using the Variant reference (27 Nov 2026)
+- **Asked:** Start the four-screen redesign with Tailwind CSS and Motion on a separate branch. Use the Variant reference as a starting point.
+- **Codex:** Inspected the published reference with Computer Use. Built a role-first readiness panel, a single trade form with in-place review, a shared trade view with confirmation states, and keyboard-accessible activity filters. Used existing wallet and contract calls throughout.
+- **Branch:** The first worktree branch used a Codex prefix. The user requested the plain name, so its working changes were moved to the existing `ui-redesign` branch and the temporary branch was removed.
+- **Verified:** Checked role switching, a buyer draft with an invalid address, Activity, phone-width layout, and the recorded Diana receipt in the browser. The frontend build and all 55 Foundry tests passed. No new trade was broadcast for UI verification.
+
+### Agentation for redesign feedback (27 Nov 2026)
+- **Asked:** Install Agentation as a development dependency and reload the redesign preview.
+- **Codex:** Added the toolbar to the Vite development entry point. Verified it appeared after reloading localhost and was absent from the production bundle.

@@ -46,14 +46,17 @@ export interface Trade {
   cashLocked: boolean;
 }
 
-export function useTrade(id: Hex | undefined) {
-  const pub = usePublicClient();
-  return useQuery({
+export function tradeQueryOptions(pub: ReturnType<typeof usePublicClient>, id: Hex | undefined) {
+  return {
     queryKey: ["trade", id],
     enabled: !!id && !!pub,
     refetchInterval: 8_000,
     queryFn: async () => (await pub!.readContract({ address: DEPLOYMENT.countersign, abi: csAbi, functionName: "getTrade", args: [id!] })) as Trade,
-  });
+  };
+}
+
+export function useTrade(id: Hex | undefined) {
+  return useQuery(tradeQueryOptions(usePublicClient(), id));
 }
 
 export function useNav() {

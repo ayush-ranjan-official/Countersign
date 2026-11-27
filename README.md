@@ -163,6 +163,8 @@ Countersign builds on the following open-source work. See [NOTICE](NOTICE) for t
 | [forge-std](https://github.com/foundry-rs/forge-std) | Foundry tests and scripts |
 | [Build Before Q-Day, workshop 2 (QDayVault)](https://github.com/qorechain/build-before-qday) | Reference pattern for fail-closed PQC checks, `vm.etch` mocks, window scripts, two-stage audit |
 | [create-qorechain-dapp](https://www.npmjs.com/package/create-qorechain-dapp) | `foundry` and `viem-wagmi` templates used to scaffold `contracts/` and `app/` |
+| [Tailwind CSS](https://tailwindcss.com/) and [Motion](https://motion.dev/) | Responsive app styling and interaction transitions |
+| [Instrument Serif](https://fonts.google.com/specimen/Instrument+Serif) and [Manrope](https://fonts.google.com/specimen/Manrope) | App typography |
 | QoreChain packages: `@qorechain/sdk`, `@qorechain/evm`, `@qorechain/qoresign`, `@qorechain/qoreseal`, `@qorechain/qorex-types`, `@qorechain/qorex-rainbowkit` | Accounts, windows, ML-DSA signing, QoreSeal, QoreX wallet |
 | [QoreChain MCP](https://github.com/qorechain/qorechain-mcp) | Read-only chain tools and agent skills used while building (see [AI_USAGE.md](AI_USAGE.md)) |
 

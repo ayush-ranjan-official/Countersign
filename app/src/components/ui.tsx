@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatUnits, type Address } from "viem";
 import { useAccount } from "wagmi";
@@ -31,11 +32,28 @@ export function Addr({ a, label }: { a: Address | string; label?: string }) {
   );
 }
 
-export function TxLink({ hash }: { hash: string }) {
+export function TxLink({ hash, label }: { hash: string; label?: string }) {
   return (
     <a className="mono" href={txUrl(hash)} target="_blank" rel="noreferrer">
-      {short(hash, 8)} ↗
+      {label ?? short(hash, 8)} ↗
     </a>
+  );
+}
+
+export function CopyButton({ text, label }: { text: string; label: string }) {
+  const [message, setMessage] = useState("");
+  return (
+    <span className="copy-control">
+      <button type="button" className="ghost" onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+          setMessage("Copied");
+        } catch {
+          setMessage("Copy was blocked by the browser.");
+        }
+      }}>{label}</button>
+      {message && <small role="status">{message}</small>}
+    </span>
   );
 }
 
@@ -51,29 +69,17 @@ export function Card({ title, children, aside }: { title: string; children: Reac
   );
 }
 
-export function Check({ ok, warn, title, children }: { ok: boolean; warn?: boolean; title: string; children?: ReactNode }) {
-  return (
-    <li className={`check ${ok ? "ok" : warn ? "warn" : "bad"}`}>
-      <span className="dot" aria-hidden>{ok ? "✓" : warn ? "!" : "×"}</span>
-      <div>
-        <strong>{title}</strong>
-        {children && <div className="muted">{children}</div>}
-      </div>
-    </li>
-  );
-}
-
 export function TxStatus({ s }: { s: TxState }) {
   if (s.phase === "idle") return null;
-  if (s.phase === "error") return <p className="status bad">✗ {s.label}: {s.reason}</p>;
+  if (s.phase === "error") return <p className="status bad" role="alert">✗ {s.label}: {s.reason}</p>;
   if (s.phase === "done")
     return (
-      <p className="status ok">
+      <p className="status ok" role="status">
         ✓ {s.label}: <TxLink hash={s.hash} />
       </p>
     );
-  const what = s.phase === "simulating" ? "simulating on the node" : s.phase === "signing" ? "approve in QoreX" : "waiting for the block";
-  return <p className="status busy">… {s.label}: {what}</p>;
+  const what = s.phase === "simulating" ? "Checking the transaction" : s.phase === "signing" ? "Approve in QoreX" : "Waiting for on-chain confirmation";
+  return <p className="status busy" role="status">… {s.label}: {what}</p>;
 }
 
 /** The exact string QoreX will show and sign, so the user can compare it with the wallet prompt. */

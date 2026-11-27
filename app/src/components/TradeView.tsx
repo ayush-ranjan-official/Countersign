@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import { erc20Abi, type Hex } from "viem";
 import { useAccount, usePublicClient } from "wagmi";
 import { DEPLOYMENT, FUSD, csAbi } from "../lib/config";
@@ -6,7 +7,7 @@ import { signData } from "../lib/qorex";
 import { STATUS, useBalances, useBlotter, useChainNow, useNav, useSettlement, useTrade } from "../lib/reads";
 import { affirmData, approveData, encodeTerms, paramToSig, shareLink, sigToParam, tradeIdOf, type Terms } from "../lib/terms";
 import { preflight, useTx, type Call } from "../lib/tx";
-import { Addr, Card, Check, SignedString, TxLink, TxStatus, fmtFusd, same, useQorex } from "./ui";
+import { Addr, Card, CopyButton, SignedString, TxLink, TxStatus, fmtFusd, same, short, useQorex } from "./ui";
 
 export interface TradeRoute {
   terms?: Terms;
@@ -18,6 +19,7 @@ export interface TradeRoute {
 const cs = (functionName: string, args: readonly unknown[]): Call => ({ address: DEPLOYMENT.countersign, abi: csAbi, functionName, args });
 
 export function TradeView(route: TradeRoute) {
+  const reduceMotion = useReducedMotion();
   const pub = usePublicClient();
   const { address } = useAccount();
   const qx = useQorex();
@@ -33,6 +35,7 @@ export function TradeView(route: TradeRoute) {
   const tx = useTx();
   const settlement = useSettlement(id, opened?.block, trade.data?.status === 2);
   const [settleBlock, setSettleBlock] = useState<string | null>(null);
+  const [signing, setSigning] = useState(false);
   const [relayOut, setRelayOut] = useState<string | null>(null);
 
   const t = trade.data;
@@ -48,15 +51,18 @@ export function TradeView(route: TradeRoute) {
   // Live answer to "can this trade settle right now, and if not, why?" (simulated, nothing sent).
   useEffect(() => {
     if (!id || !pub || status !== 1) return setSettleBlock(null);
-    preflight(pub, address, cs("settle", [id])).then(setSettleBlock);
+    let current = true;
+    preflight(pub, address, cs("settle", [id])).then((reason) => { if (current) setSettleBlock(reason); });
+    return () => { current = false; };
   }, [id, pub, address, status, t?.assetLocked, t?.cashLocked, t?.officerApproved, nav.data?.timestamp, now.data]);
 
   if (!id) return <Card title="Trade">Unknown trade link.</Card>;
   if (!terms) return <Card title="Trade">{trade.isLoading || blotter.isLoading ? "Loading…" : "This trade is not on chain and the link carries no terms."}</Card>;
 
   async function signFor(kind: "affirm" | "approve") {
-    if (!me || !terms || !id) return;
+    if (!me || !terms || !id || signing) return;
     setRelayOut(null);
+    setSigning(true);
     try {
       const sig = await signData(me.qor1, kind === "affirm" ? affirmData(id) : approveData(id));
       if (canSend) {
@@ -66,7 +72,9 @@ export function TradeView(route: TradeRoute) {
         setRelayOut(`${location.origin}${location.pathname}#/t/${encodeTerms(terms)}?${kind}=${kind === "affirm" ? (iAmSeller ? "s." : "b.") : ""}${sigToParam(sig)}`);
       }
     } catch (e) {
-      tx.setState({ phase: "error", label: `sign ${kind}`, reason: e instanceof Error ? e.message : String(e) });
+      tx.setState({ phase: "error", label: `Sign ${kind}`, reason: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setSigning(false);
     }
   }
 
@@ -88,121 +96,147 @@ export function TradeView(route: TradeRoute) {
   const fair = nav.data?.price ? nav.data.price * terms.assetAmount : null;
   const devBps = fair ? Number(((terms.cashAmount > fair ? terms.cashAmount - fair : fair - terms.cashAmount) * 10_000n) / fair) : null;
 
+  const bothAffirmed = Boolean(t?.sellerAffirmed && t?.buyerAffirmed);
+  const bothLocked = Boolean(t?.assetLocked && t?.cashLocked);
+  const navReady = navAge !== null && navAge <= DEPLOYMENT.maxNavAge && devBps !== null && devBps <= Number(DEPLOYMENT.maxDeviationBps);
+  const busy = signing || ["simulating", "signing", "mining"].includes(tx.state.phase);
+  const busyLabel = tx.state.phase === "simulating" ? "Checking transaction…" :
+    tx.state.phase === "mining" ? "Waiting for confirmation…" : "Approve in QoreX";
+  const send = async (label: string, name: string, args: readonly unknown[]) => {
+    await tx.run(label, cs(name, args));
+    await trade.refetch();
+  };
+  const relayAffirm = route.relayAffirm;
+  const relayApprove = route.relayApprove;
+  let next: { label: string; detail: string; run?: () => void; signature?: string } = {
+    label: "Waiting for both parties",
+    detail: "Each party must approve the same terms before depositing assets.",
+  };
+
+  if (status === 2) {
+    next = { label: "Settlement complete", detail: "The bonds and payment moved in one transaction." };
+  } else if (status === 3) {
+    next = { label: "Assets returned", detail: "The trade closed after its deadline." };
+  } else if (expired) {
+    next = t?.assetLocked || t?.cashLocked
+      ? { label: "Reclaim escrow", detail: "The deadline passed. Return any deposits to their original owners.", run: () => send("Reclaim escrow", "reclaim", [id]) }
+      : { label: "Trade expired", detail: "There are no deposits to return." };
+  } else if (relayAffirm && open && !(relayAffirm.startsWith("s.") ? t?.sellerAffirmed : t?.buyerAffirmed)) {
+    next = { label: "Submit signed approval", detail: "The linked approval can be submitted using a connected wallet.", run: () => {
+      const [who, signature] = relayAffirm.split(".") as [string, string];
+      if (!signature) {
+        tx.setState({ phase: "error", label: "Submit signed approval", reason: "The link is missing its signature." });
+        return;
+      }
+      try {
+        void send("Submit signed approval", "affirm", [terms, who === "s" ? terms.seller : terms.buyer, paramToSig(signature)]);
+      } catch {
+        tx.setState({ phase: "error", label: "Submit signed approval", reason: "The link’s signature could not be read." });
+      }
+    } };
+  } else if (relayApprove && status === 1 && !t?.officerApproved) {
+    next = { label: "Submit officer approval", detail: "Submit the signed approval attached to this link.", run: () => {
+      try {
+        void send("Submit officer approval", "approveLarge", [id, paramToSig(relayApprove)]);
+      } catch {
+        tx.setState({ phase: "error", label: "Submit officer approval", reason: "The link’s signature could not be read." });
+      }
+    } };
+  } else if ((iAmSeller || iAmBuyer) && !(iAmSeller ? t?.sellerAffirmed : t?.buyerAffirmed)) {
+    next = { label: "Approve terms", detail: "Review the exchange above and sign the terms in QoreX.", run: () => signFor("affirm"), signature: affirmData(id) };
+  } else if (iAmOfficer && large && status === 1 && !t?.officerApproved) {
+    next = { label: "Approve as compliance officer", detail: "This trade requires a separate compliance approval.", run: () => signFor("approve"), signature: approveData(id) };
+  } else if (bothAffirmed && ((iAmSeller && !t?.assetLocked) || (iAmBuyer && !t?.cashLocked))) {
+    const lockLabel = iAmSeller ? terms.assetAmount + " bonds" : fmtFusd(terms.cashAmount) + " fUSD";
+    next = {
+      label: "Lock " + lockLabel,
+      detail: canSend ? "QoreX may ask you to approve the exact amount and then confirm the escrow deposit." : "Select an Ethereum account (coin 60) to deposit assets.",
+      run: canSend ? () => lock(iAmSeller ? "asset" : "cash") : undefined,
+    };
+  } else if (bothAffirmed && !bothLocked) {
+    next = !t?.assetLocked
+      ? { label: "Waiting for seller", detail: "The seller needs to deposit the bonds." }
+      : { label: "Waiting for buyer", detail: "The buyer needs to deposit the fUSD." };
+  } else if (bothLocked && large && !t?.officerApproved) {
+    next = { label: "Waiting for officer approval", detail: "This trade exceeds the threshold for a separate compliance approval." };
+  } else if (bothLocked && (!navReady || settleBlock)) {
+    next = { label: "Settlement is paused", detail: !navReady ? "Settlement needs a fresh reference price within the permitted range." : "Open Technical details to see the result of the settlement check." };
+  } else if (bothLocked && status === 1) {
+    next = { label: "Settle trade", detail: "Release the bonds and payment together in one transaction.", run: () => send("Settle trade", "settle", [id]) };
+  }
+
   return (
-    <div className="stack">
-      <Card title={`Trade ${id.slice(0, 10)}…`} aside={<span className={`badge s${status}`}>{status === 0 ? "Not opened" : STATUS[status]}</span>}>
-        <table className="kv">
-          <tbody>
-            <tr><th>Seller</th><td><Addr a={terms.seller} />{iAmSeller && " (you)"}</td></tr>
-            <tr><th>Buyer</th><td><Addr a={terms.buyer} />{iAmBuyer && " (you)"}</td></tr>
-            <tr><th>Delivery</th><td>{terms.assetAmount.toString()} CSB31 bonds</td></tr>
-            <tr><th>Payment</th><td>{fmtFusd(terms.cashAmount)} fUSD</td></tr>
-            <tr><th>Deadline</th><td>{new Date(Number(terms.deadline) * 1000).toLocaleString()}{expired && open ? " (passed)" : ""}</td></tr>
-            <tr><th>Trade id</th><td className="mono">{id}</td></tr>
-            <tr><th>Ticket hash</th><td className="mono">{terms.ticketHash}</td></tr>
-          </tbody>
-        </table>
-        {open && !expired && (
-          <button className="ghost" onClick={() => navigator.clipboard.writeText(shareLink(terms))}>
-            Copy share link
-          </button>
-        )}
-      </Card>
-
-      <div className="grid2">
-        <Card title="Settlement checklist">
-          <ul className="checks">
-            <Check ok={!!t?.sellerAffirmed} title="Seller affirmed (ML-DSA-87, verified on chain)" />
-            <Check ok={!!t?.buyerAffirmed} title="Buyer affirmed (ML-DSA-87, verified on chain)" />
-            <Check ok={!!t?.assetLocked || status === 2} title="Bonds locked in escrow (exact pull)" />
-            <Check ok={!!t?.cashLocked || status === 2} title="Cash locked in escrow (exact pull)" />
-            {large && <Check ok={!!t?.officerApproved} title={`Compliance officer approved (≥ ${fmtFusd(DEPLOYMENT.largeTradeThreshold)} fUSD)`} />}
-            {status === 2 ? (
-              <Check ok title="Fresh reference price, trade within the band">checked by the contract at settlement</Check>
-            ) : status !== 3 ? (
-              <Check ok={navAge !== null && navAge <= DEPLOYMENT.maxNavAge && devBps !== null && devBps <= Number(DEPLOYMENT.maxDeviationBps)} title="Fresh reference price, trade within the band">
-                {nav.isLoading
-                  ? "reading the NAV…"
-                  : nav.data?.price
-                    ? `NAV ${fmtFusd(nav.data.price)} fUSD/bond, ${navAge}s old (max ${DEPLOYMENT.maxNavAge}s); trade is ${devBps !== null ? (devBps / 100).toFixed(2) : "?"} % away (max ${Number(DEPLOYMENT.maxDeviationBps) / 100} %)`
-                    : "no NAV posted yet"}
-              </Check>
-            ) : null}
-            <Check ok={status === 2} warn={status === 3} title={status === 3 ? "Reclaimed after the deadline" : "Settled: both legs in one transaction"}>
-              {status === 1 && (settleBlock ? `not yet: ${settleBlock}` : "ready: anyone can settle now")}
-              {status === 2 && settlement.data && (
-                <>
-                  receipt <TxLink hash={settlement.data.tx} />
-                </>
-              )}
-            </Check>
-          </ul>
-        </Card>
-
-        <Card title="Actions">
-          <div className="actions">
-            {open && !expired && (iAmSeller || iAmBuyer) && !(iAmSeller ? t?.sellerAffirmed : t?.buyerAffirmed) && (
+    <div className="workspace">
+      <header className="page-heading">
+        <p className="overline">Settlement</p>
+        <h1>Trade details</h1>
+        <p>{iAmSeller ? "You are the seller." : iAmBuyer ? "You are the buyer." : "Review the terms and settlement status."}</p>
+      </header>
+      <div className="work-grid">
+        <div className="stack">
+          <section className="panel exchange-panel" aria-labelledby="trade-exchange">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 id="trade-exchange">Exchange summary</h2>
+              <span className={"badge s" + status}>{status === 0 ? "Not opened" : expired && open ? "Expired" : STATUS[status]}</span>
+            </div>
+            <div className="exchange-pair">
+              <div><span>{iAmSeller ? "You deliver" : iAmBuyer ? "You receive" : "Seller delivers"}</span><strong>{terms.assetAmount.toString()}</strong><small>CSB31 bonds</small></div>
+              <span className="exchange-arrow" aria-hidden="true">⇄</span>
+              <div><span>{iAmSeller ? "You receive" : iAmBuyer ? "You pay" : "Buyer pays"}</span><strong>{fmtFusd(terms.cashAmount)}</strong><small>fUSD</small></div>
+            </div>
+            <dl className="network-details mt-6 border-t border-line pt-4">
+              <div><dt>Seller</dt><dd><Addr a={terms.seller} />{iAmSeller && " · You"}</dd></div>
+              <div><dt>Buyer</dt><dd><Addr a={terms.buyer} />{iAmBuyer && " · You"}</dd></div>
+              <div><dt>Settle by</dt><dd>{new Date(Number(terms.deadline) * 1000).toLocaleString()}</dd></div>
+            </dl>
+            {open && !expired && <div className="mt-4"><CopyButton text={shareLink(terms)} label="Copy trade link" /></div>}
+          </section>
+          <Card title="Settlement progress">
+            <ol className="settlement-stages">
+              <li><h3>Terms approved</h3><p>Seller {t?.sellerAffirmed ? "approved" : "pending"} · Buyer {t?.buyerAffirmed ? "approved" : "pending"}</p></li>
+              <li><h3>Assets locked</h3><p>Bonds {t?.assetLocked || status === 2 ? "locked" : "pending"} · fUSD {t?.cashLocked || status === 2 ? "locked" : "pending"}</p></li>
+              <li><h3>{status === 2 ? "Settled" : status === 3 ? "Reclaimed" : "Settlement"}</h3>
+                <p>{status === 2 ? "Both transfers confirmed" : status === 3 ? "The trade is closed" : "Both assets move together once confirmed"}</p></li>
+            </ol>
+          </Card>
+        </div>
+        <Card title={status === 2 ? "Settlement receipt" : "Next action"}>
+          {status === 2 ? (
+            <motion.div className="receipt-panel" initial={reduceMotion ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.23, 1, 0.32, 1] }}>
+              <h3>Settled in one transaction</h3>
+              <p>{terms.assetAmount.toString()} CSB31 delivered to the buyer</p>
+              <p>{fmtFusd(terms.cashAmount)} fUSD paid to the seller</p>
+              {settlement.data && <div className="mt-3"><TxLink hash={settlement.data.tx} label="View settlement receipt" /></div>}
+            </motion.div>
+          ) : (
+            <div className="stack">
               <div>
-                <SignedString data={affirmData(id)} />
-                <button className="primary" onClick={() => signFor("affirm")}>
-                  Affirm as {iAmSeller ? "seller" : "buyer"} in QoreX
-                </button>
+                {!next.run && <h3 className="text-base font-extrabold">{next.label}</h3>}
+                <p className="muted">{next.detail}</p>
               </div>
-            )}
-            {route.relayAffirm && open && !expired && (
-              <button
-                onClick={() => {
-                  const [who, sig] = route.relayAffirm!.split(".") as [string, string];
-                  const party = who === "s" ? terms.seller : terms.buyer;
-                  tx.run(`submit the ${who === "s" ? "seller" : "buyer"}'s relayed affirmation`, cs("affirm", [terms, party, paramToSig(sig)])).then(() => trade.refetch());
-                }}
-              >
-                Submit the {route.relayAffirm.startsWith("s.") ? "seller" : "buyer"}'s signed affirmation in this link
-              </button>
-            )}
-            {status === 1 && !expired && t?.sellerAffirmed && t?.buyerAffirmed && iAmSeller && !t.assetLocked && (
-              <button className="primary" disabled={!canSend} onClick={() => lock("asset")}>
-                Approve exactly {terms.assetAmount.toString()} bonds and lock
-              </button>
-            )}
-            {status === 1 && !expired && t?.sellerAffirmed && t?.buyerAffirmed && iAmBuyer && !t.cashLocked && (
-              <button className="primary" disabled={!canSend} onClick={() => lock("cash")}>
-                Approve exactly {fmtFusd(terms.cashAmount)} fUSD and lock
-              </button>
-            )}
-            {status === 1 && !expired && large && iAmOfficer && !t?.officerApproved && (
-              <div>
-                <SignedString data={approveData(id)} />
-                <button className="primary" onClick={() => signFor("approve")}>
-                  Approve as compliance officer in QoreX
-                </button>
-              </div>
-            )}
-            {route.relayApprove && status === 1 && !t?.officerApproved && (
-              <button onClick={() => tx.run("submit the officer's approval", cs("approveLarge", [id, paramToSig(route.relayApprove!)])).then(() => trade.refetch())}>
-                Submit the officer approval in this link
-              </button>
-            )}
-            {status === 1 && !expired && (
-              <button className="primary" disabled={!!settleBlock || !address} onClick={() => tx.run("settle (DvP)", cs("settle", [id])).then(() => trade.refetch())}>
-                Settle: bonds ↔ fUSD in one transaction
-              </button>
-            )}
-            {status !== 2 && expired && (t?.assetLocked || t?.cashLocked) && (
-              <button onClick={() => tx.run("reclaim", cs("reclaim", [id])).then(() => trade.refetch())}>Reclaim: return each leg to its owner</button>
-            )}
-            {status === 2 && <p className="ok">Settled. The buyer holds the bonds and the seller the fUSD.</p>}
-            {status === 3 && <p className="muted">Closed after the deadline; locked legs went back to their depositors.</p>}
-          </div>
-          <TxStatus s={tx.state} />
-          {relayOut && (
-            <div className="signed">
-              <div className="small">Signed. This account cannot send EVM transactions: send this link to anyone with a coin-60 account (e.g. the counterparty) to submit it.</div>
-              <textarea readOnly value={relayOut} rows={3} />
-              <button onClick={() => navigator.clipboard.writeText(relayOut)}>Copy</button>
+              {next.run && <button className="primary w-fit" disabled={busy || (!address && !next.signature)} onClick={next.run}>
+                {busy ? busyLabel : next.label}
+              </button>}
+              {!address && open && !expired && <p className="notice">Connect the intended QoreX wallet in the header to act on this trade.</p>}
             </div>
           )}
-          {(iAmSeller || iAmBuyer) && !canSend && me && <p className="muted small">Locking and settling need an Ethereum-style (coin 60) QoreX account.</p>}
+          <TxStatus s={tx.state} />
+          {relayOut && <div className="notice mt-4"><p>Share this signed link with someone using a coin-60 account so they can submit the approval.</p>
+            <textarea readOnly aria-label="Signed trade link" value={relayOut} rows={3} /><CopyButton text={relayOut} label="Copy signed link" />
+          </div>}
+          <details className="disclosure mt-5">
+            <summary>Technical details</summary>
+            <dl className="network-details mt-3">
+              <div><dt>Trade ID</dt><dd className="mono">{short(id)}</dd></div>
+              <div><dt>Ticket hash</dt><dd className="mono">{short(terms.ticketHash)}</dd></div>
+              <div><dt>Compliance approval</dt><dd>{large ? t?.officerApproved ? "Approved" : "Required" : "Not required"}</dd></div>
+              <div><dt>Reference price</dt><dd>{nav.data?.price ? fmtFusd(nav.data.price) + " fUSD / bond" : "Unavailable"}</dd></div>
+              {status === 1 && settleBlock && <div><dt>Settlement check</dt><dd>{settleBlock}</dd></div>}
+            </dl>
+            {next.signature && <SignedString data={next.signature} />}
+            <CopyButton text={id} label="Copy trade ID" />
+          </details>
         </Card>
       </div>
     </div>

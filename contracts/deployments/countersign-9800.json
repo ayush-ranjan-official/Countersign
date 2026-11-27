@@ -1,0 +1,14 @@
+{
+  "attestor": "0xA56cb7dBca45FCf1B21ef9172999343447045891",
+  "bond": "0xE125101F98f2E689d7562245e9633BD74B60f213",
+  "countersign": "0x5dE471FB275858f29ed1C2f7f6452dE5E4A37c47",
+  "faucet": "0x5738c948f54d2e6971AF125f746dA4521821164F",
+  "faucetAmount": 100,
+  "faucetCooldown": 86400,
+  "guard": "0x54A2d3d4B60eD430BF32765Cf2F5243cd69Fc43a",
+  "label": "preview-v0",
+  "largeTradeThreshold": 250000000,
+  "maxDeviationBps": 200,
+  "maxNavAge": 600,
+  "officer": "0x6AAccd3683EA7BF0F680D6d8B8501ef27676e86B"
+}

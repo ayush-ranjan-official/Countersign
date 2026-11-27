@@ -20,7 +20,10 @@
     "spike:s3": "tsx --env-file=.env scripts/spike-s3.ts",
     "spike:s5": "tsx --env-file=.env scripts/spike-s5.ts",
     "deploy:bond": "forge script script/DeployBond.s.sol --rpc-url qorechain_testnet --broadcast --slow",
-    "deploy:spike-escrow": "forge script script/DeploySpikeEscrow.s.sol --rpc-url qorechain_testnet --broadcast --slow"
+    "deploy:spike-escrow": "forge script script/DeploySpikeEscrow.s.sol --rpc-url qorechain_testnet --broadcast --slow",
+    "deploy:countersign": "forge script script/DeployCountersign.s.sol --rpc-url qorechain_testnet --broadcast --slow",
+    "trade": "tsx --env-file=.env scripts/trade.ts",
+    "attack": "tsx --env-file=.env scripts/attack.ts"
   },
   "dependencies": {
     "@cosmjs/proto-signing": "^0.39.0",

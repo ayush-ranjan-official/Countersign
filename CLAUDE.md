@@ -101,7 +101,13 @@
 - **Top-Quality (7 × $250):** for projects that win no other prize, score ≥70/100 and pass every check.
 - **Regional Asia-Pacific ($200):** for projects that win no other prize. Choose **India** on the form; winners may be asked for proof of residence.
 - **People's Choice:** community vote in QoreX on mainnet, 6–15 Dec. Build in public on X with #BuildBeforeQDay.
-- The rubric weights are not published. The jury breaks Q-Day Drill ties on the **threat model**, which shows they value one, so write a strong `docs/THREAT_MODEL.md`.
+- **Rubric (corrected 27 Nov, from the official FAQ; it was "not published"), same for every category:** Works as described **25%** · QoreChain tech usage, verified in the repo and on chain **25%** · Post-quantum correctness and security **20%** · Originality **15%** · Clarity, UX and documentation **15%**. The jury breaks Q-Day Drill ties on the **threat model**, so write a strong `docs/THREAT_MODEL.md`.
+- **The audit's status (official Prizes page + FAQ, read 27 Nov):**
+  - The Prizes page lists "two-stage QCAI audit" among the category's "Main requirements".
+  - It is *not* among the hard submission checks (repo + licence, README, video, testnet addresses).
+  - The score is "not fed into judging automatically. Jurors score by hand and read the reports".
+  - There is no submission field: the reports go in the repo (`docs/audit/`, `docs/AUDIT.md`, plus one line in the README and in "How it's made").
+  - **Cost:** the dashboard gives one free audit per UTC day per account; extra testnet audits cost test QOR (150 QOR was shown on 27 Nov). So run Stage 1 and Stage 2 on different UTC days.
 
 ---
 

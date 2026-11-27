@@ -13,3 +13,9 @@ export function logTx(step: string, hash: string, result: string) {
   if (existsSync(DEMO)) appendFileSync(DEMO, line);
   console.log(`  tx ${hash}\n  ${txLink(hash)}`);
 }
+
+/** A row for a result that has no tx hash (a simulated, blocked attack, or a read-only check). */
+export function logNote(step: string, result: string) {
+  const line = `| ${new Date().toISOString().replace(/\.\d+Z$/, "Z")} | ${step} | none (eth_call, nothing broadcast) | ${result} |\n`;
+  if (existsSync(DEMO)) appendFileSync(DEMO, line);
+}

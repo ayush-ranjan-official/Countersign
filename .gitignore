@@ -30,3 +30,6 @@ contracts/broadcast/**/dry-run/
 .claude/settings.local.json
 .vscode/
 *.log
+
+# plaintext trade tickets (QoreSeal seals them; never commit the plaintext)
+contracts/tickets/

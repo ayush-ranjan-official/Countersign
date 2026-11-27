@@ -295,6 +295,7 @@ struct Terms {
   - The result follows message-signing-v1. The ML-DSA signature is base64 in `pq.signature`; convert it to hex for the contract.
   - Verify off chain with `verifyMessageWithChain` from `@qorechain/qoresign/network`.
   - A fresh account has no registered key until its first transaction from QoreX.
+  - **Verified 27 Nov (spike S-2 PASS):** a real QoreX extension `signArbitrary` signature (coin-118 account) verifies through `pqcVerify` on testnet over `qorechain-msg-v1|qorechain-diana|<data>`. The result also carries Keplr-style `pub_key` / `signature` fields. The copied `integrate-qorex` skill and the 0.1.0 `qorex-types` docs still say signArbitrary is "not yet supported"; that is out of date for the native provider. Evidence: `docs/spikes/s2-qorex-signArbitrary.json`.
 - For testing on a phone, serve the app on a public HTTPS URL (the phone cannot reach localhost) and open it in QoreX's in-app browser with testnet enabled in developer mode.
 
 **Faucet and test tokens**

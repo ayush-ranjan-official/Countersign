@@ -84,3 +84,15 @@ Commits written with the AI carry a `Co-Authored-By: Claude` trailer.
   - The builder chose to wait for S-2 before any contract work.
 - **AI mistakes and how they were caught:** none in this step.
 - **MCP / tools used:** QoreChain MCP `get_address_info`, `get_pq_status`, `read_contract` (first use after the session restart loaded `.mcp.json`).
+
+### T5: Spike S-2 with the builder's QoreX wallet (27 Nov 2026)
+- **Asked:** verify the QoreX `signArbitrary` result the builder produced with `app/public/spike-s2.html` (the AI started the dev server; the human did the signing in QoreX).
+- **AI generated:** saved the result as `docs/spikes/s2-qorex-signArbitrary.json` (public data only) and ran `pnpm spike:s2`. Also ran two negative checks: the same signature over another tradeId or another chain id.
+- **Results:** **S-2 PASS.**
+  - `pqcVerify` on chain returns `true` against the key read from `pqcKeyStatus` (registered, alg 1, possession proven, 2,592 B).
+  - `verifyMessageWithChain` (classical ADR-36 + ML-DSA) passes.
+  - Both negative checks return `false`.
+  - All five Day-1 spikes now pass.
+- **Human reviewed / changed:** did the QoreX signing (wallet-only step).
+- **AI mistakes and how they were caught:** none.
+- **MCP / tools used:** JSON-RPC `eth_call` to `0x…0a01` / `0x…0a02`, `@qorechain/qoresign/network` `verifyMessageWithChain`.

@@ -258,7 +258,7 @@ struct Terms {
 **Accounts and keys**
 - Every account has a `0x` form and a `qor1` form of the same 20 bytes (bech32 prefix `qor`). The faucet wants `qor1`.
 - **Corrected 27 Nov (was "coin type 118"):** the EVM lane and windows work **only with `eth_secp256k1` (coin type 60) accounts**. QoreX's default `qor1` account is coin type 118 and **cannot send on the EVM lane** (QoreX answers `4100`). In QoreX use Settings → Your accounts → **Add an Ethereum account (coin 60)**. Our script accounts (`unifiedAccountFromSeed`) are eth_secp256k1. Sources: docs `developer-guide/evm-development` (#evm-window, "Key type") and `qorex/dapp-integration`.
-- Hybrid signing = secp256k1 + ML-DSA-87. An account must register its ML-DSA-87 key once, **with a proof of possession**. This costs a fee of ≈0.09 QOR at ≈600k gas, and it is the only transaction accepted with the classical key alone.
+- Hybrid signing = secp256k1 + ML-DSA-87. An account must register its ML-DSA-87 key once, **with a proof of possession**. **Measured 27 Nov:** 297,071–297,107 gas committed (5 registrations), so the fee is ≈0.038 QOR at 0.125 uqor/gas. The earlier "≈0.09 QOR at ≈600k gas" was a loose limit. It is the only transaction accepted with the classical key alone.
 - QOR is 6 decimals natively (`uqor`) and 18 decimals on the EVM. The minimum native gas price is 0.1 uqor.
 - Use SIGN_MODE_DIRECT, not Amino.
 
@@ -268,6 +268,8 @@ struct Terms {
 - Bounds: `blocks` 1–17,280, `maxTxs` 1–1,000, `maxValue` in uqor (covers value **plus** the maximum fee).
 - Options: `allowedTargets` (only these recipients; **contract creation is refused**) and `nativeOnly`. Key rotation or re-registration closes the window.
 - A window does **not** cap token amounts or existing approvals, and **approvals survive the window closing**.
+- **Measured 27 Nov (spike S-5):** a tx to an address outside `allowedTargets` is refused at admission, before it enters the mempool, and **does not consume a nonce**. The JSON-RPC error reads `the EVM authorisation window for qor1… does not admit this transaction: the window does not list 0x… as an allowed recipient` (error class "EVM authorisation window exhausted"). `eth_call` / `eth_estimateGas` need no window, so a simulation passes even for a tx the window will refuse.
+- **Fee market:** `min_gas_multiplier = 0.5` (`/cosmos/evm/feemarket/v1/params`). A tx is charged at least 50% of its gas limit, and the receipt's `gasUsed` shows that floor (a lock with a 1.5M limit reported exactly 750,000). Always set gas limits from `eth_estimateGas` (+25%), never a loose constant. Base fee 100 gwei, `eth_gasPrice` 112.5 gwei on 27 Nov.
 - Scripts open windows with `openEvmWindowMsg({ sender, blocks, maxTxs, maxValue, allowedTargets })` from `@qorechain/sdk`. Read the state with `fetchEvmWindow` / `evmWindowStatus` and size windows with `evmWindowCost` (`@qorechain/evm`).
 
 **QoreX wallet (browser and mobile)**
@@ -285,8 +287,8 @@ struct Terms {
 - fUSD ERC-20: `0x97143B771D34ddb9130b807b135Ae675A5a963CA` (6 decimals). fETH `0x02292293c13880a26242690eb70a0e42B8E91c28` (18). fBTC `0x4604e7E45b2ecdbfbDc157103f5B2b62cb16451A` (8).
 - **The faucet pays fUSD as a bank coin**, denom `erc20:0x97143B771D34ddb9130b807b135Ae675A5a963CA` (case-sensitive, EIP-55 spelling). Convert it to ERC-20 with `MsgConvertCoin`:
   - typeUrl `/cosmos.evm.erc20.v1.MsgConvertCoin`, `sender` = qor1, `receiver` = 0x, `coin` = {denom, amount}
-  - ≈432k gas (set 600k), hybrid-signed
-  - The docs did not run this end to end, so test it with a small amount first. **Fallback:** deploy our own test "tokenized deposit" ERC-20 and say so in the README.
+  - hybrid-signed. **Run end to end on 27 Nov (spike S-4 PASS):** 449,511 gas simulated; tx `C9471C66FFC809E87965AB6EF6C793DF909CE550C1AF66C072D5099B78EB969C`; bank fUSD −1, ERC-20 `balanceOf` +1. The SDK registry has no codec for it: `contracts/scripts/convert-fusd.ts` encodes it (coin=1, receiver=2, sender=3).
+  - Fallback (not needed): our own test "tokenized deposit" ERC-20.
 
 **SDK (TypeScript, `@qorechain/sdk` 0.14.x)**
 - `createClient()` defaults to the testnet.

@@ -53,3 +53,19 @@ Commits written with the AI carry a `Co-Authored-By: Claude` trailer.
   2. **Dry-run artefact:** the first `DeployBond.s.sol` wrote `deployments/bond-9800.json` during a dry run, recording predicted addresses that were never deployed. I caught it by listing `deployments/` after the dry run, deleted the file, and gated the write on `vm.isContext(ScriptBroadcast)`.
   3. **Fact fix in CLAUDE.md:** §7 said accounts use coin type 118. The docs say the EVM lane and windows work only with eth_secp256k1 (coin type 60) accounts; QoreX's default `qor1` account cannot send on the EVM lane. CLAUDE.md is corrected.
 - **MCP / tools used:** JSON-RPC `eth_call` to `0x…0a01` / `0x…0a02`, `eth_gasPrice`, `eth_getBlockByNumber` (base fee 100 gwei). REST `token_pairs` (fUSD pair enabled, `OWNER_EXTERNAL`) and `denoms_metadata`. The docs in `refs/qorechain-docs`.
+
+### T3: Day-1 spikes run on testnet (27 Nov 2026)
+- **Asked:** run the spikes once ISSUER was funded. The human claimed the faucet to ISSUER (tx `1B6E8FA4…694B`).
+- **AI ran:** in order, register ISSUER → S-1 with the registered key → fund → register the other 4 → ISSUER deploy window → `DeployBond.s.sol` + `DeploySpikeEscrow.s.sol` → SELLER scoped window → S-3 → S-4 → BUYER scoped window → S-5. Every native tx was simulated through REST `/cosmos/tx/v1beta1/simulate`, every EVM write through `eth_call` / `eth_estimateGas`, and every forge deploy as a dry run first. All hashes are in `docs/DEMO.md`.
+- **Results:**
+  - **S-1 PASS:** the registered key from `pqcKeyStatus` (alg 1, proven, 2,592 B) verifies through `pqcVerify`; 5 negative cases return `false`.
+  - **S-3 PASS:** mint to a hybrid holder works and mint to a keyless address is refused (`TransferRejected(61)`). The pull into the escrow is refused before exemption (`TransferRejected(62)`) and works after `setExempt`, with the allowance back to 0.
+  - **S-4 PASS:** `MsgConvertCoin` 1 fUSD, ERC-20 `balanceOf` +1.
+  - **S-5 PASS:** a scoped window admits approve, lock and unlock. A tx to a 4th address is refused at admission ("does not list … as an allowed recipient") and does not consume a nonce.
+  - **S-2:** blocked on the human (QoreX).
+- **Human reviewed / changed:** did the faucet claim.
+- **AI mistakes and how they were caught:**
+  1. **Unsorted coins:** `fund.ts` built the BUYER coins as `[uqor, erc20:…]`. The chain's **simulation** refused it with `invalid coins`, because `sdk.Coins` must be sorted by denom. Nothing was broadcast. Fixed by sorting.
+  2. **Loose gas limit:** a fixed 1.5M gas limit made the S-3 lock receipt show exactly 750,000 gas. The fee market's `min_gas_multiplier = 0.5` charges at least half the limit, so we overpaid and the receipt didn't show the real cost. Writes now use `eth_estimateGas` + 25%. Recorded in CLAUDE.md §7.
+  3. **Wrong gas figures in CLAUDE.md:** §7 said registration is ≈600k gas / ≈0.09 QOR; it measured ≈297k gas / ≈0.038 QOR. `MsgConvertCoin` measured 449.5k gas against ≈432k. Both corrected from the real runs.
+- **MCP / tools used:** REST (`txs`, `bank/balances`, `evm_window`, `feemarket/params`, `simulate`), JSON-RPC (`eth_call` to the precompiles, `eth_estimateGas`, receipts), `cast codesize` / `cast call` to check the deployed code and owners. The QoreChain MCP server is not loaded in this session yet.

@@ -91,12 +91,15 @@ export async function send(a: DemoAccount, c: Call, errorAbi?: Abi) {
   const sim = await simulate(a, c, errorAbi);
   if (!sim.ok) throw new Error(`simulation refused, not sending: ${sim.reason}`);
   const wallet = walletFor(a);
+  // The fee market charges at least min_gas_multiplier (0.5) x gas limit, so a loose limit both overpays and
+  // hides the real gas figure in the receipt. Use the node's estimate (it runs the precompiles) + 25%.
+  const est = await pub.estimateContractGas({ account: a.evm, address: c.address, abi: c.abi, functionName: c.functionName, args: c.args ?? [] } as never);
   const hash = await wallet.writeContract({
     address: c.address,
     abi: c.abi,
     functionName: c.functionName,
     args: c.args ?? [],
-    gas: c.gas ?? 1_500_000n,
+    gas: c.gas ?? (est * 125n) / 100n + 20_000n,
     ...FEES,
   } as never);
   const receipt = await pub.waitForTransactionReceipt({ hash });

@@ -32,6 +32,8 @@ for (const [role, def] of Object.entries(plan) as [Exclude<Role, "ISSUER">, { qo
   const to = loadAccount(role);
   const amount = [{ denom: "uqor", amount: units(qor) }];
   if (fusd > 0) amount.push({ denom: FUSD_DENOM, amount: units(fusd) });
+  // sdk.Coins must be sorted by denom ("erc20:..." < "uqor"), or the bank module answers "invalid coins".
+  amount.sort((x, y) => (x.denom < y.denom ? -1 : x.denom > y.denom ? 1 : 0));
   console.log(`  -> ${role.padEnd(8)} ${to.cosmos}: ${qor} QOR${fusd ? ` + ${fusd} fUSD` : ""}`);
   msgs.push({ typeUrl: "/cosmos.bank.v1beta1.MsgSend", value: { fromAddress: issuer.cosmos, toAddress: to.cosmos, amount } });
 }

@@ -33,7 +33,8 @@ button, summary { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
 :focus-visible { outline: 2px solid #45735a; outline-offset: 4px; }
 
-.app { @apply mx-auto max-w-[82rem] px-4 sm:px-7 lg:px-9; }
+.app { @apply mx-auto flex min-h-dvh max-w-[82rem] flex-col px-4 sm:px-7 lg:px-9; }
+.app > main { @apply flex-1; }
 .skip-link { @apply fixed top-3 left-3 z-50 -translate-y-[150%] rounded-lg bg-surface px-4 py-2 font-bold focus:translate-y-0; }
 .top { @apply mb-5 flex flex-wrap items-center justify-between gap-x-5 gap-y-3 border-b border-line py-4 sm:mb-7 sm:py-5; }
 .brand { @apply inline-flex items-center gap-2.5 text-xl font-extrabold tracking-[-0.055em] sm:text-[1.45rem]; }

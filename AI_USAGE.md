@@ -259,3 +259,13 @@ Commits written with the AI carry a `Co-Authored-By: Claude` trailer.
 - **Asked:** Center the proposal form, remove its page heading, replace the exchange sidebar with compact totals, preserve the incoming Buy or Sell selection with in-form switching, and use a 1–72 hour deadline slider.
 - **Codex:** Updated `app/src/components/NewTrade.tsx` and `app/src/styles.css` on `ui-redesign`. The form and review now display the same computed total, and the slider defaults to 24 hours.
 - **Verified:** A temporary browser regression script failed against the old form and passed after the change. Checked desktop and narrow layouts, then used Computer Use in Brave to verify the QoreX-connected review and signature prompt on Diana. Dismissed the prompt before signing. Typecheck and build passed. Foundry was unavailable on this host.
+
+### QoreX connection prompts (28 Nov 2026)
+- **Asked:** Stop repeated QoreX connection prompts during a Brave session and verify the fix with Computer Use.
+- **Codex:** Restricted the native account query to an authorized QoreX session and moved native-only authorization behind an explicit action. Updated the onboarding status for a wallet that needs to reconnect.
+- **Verified:** Reproduced the unsolicited QoreX prompt in Brave. After the fix, a fresh origin stayed disconnected until the wallet was selected. After connection, navigation, reload, and a new tab stayed connected without prompting. A draft reached on-chain review without signing or broadcasting.
+
+### Footer positioning (28 Nov 2026)
+- **Asked:** Anchor the footer at the bottom of the page.
+- **Codex:** Made the shared app layout fill the viewport and let the main content take up available space.
+- **Verified:** Checked matching footer positions on short desktop routes at 1470×768 and confirmed that the footer follows the content on a scrollable mobile page.

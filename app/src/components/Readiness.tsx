@@ -140,7 +140,7 @@ export function Readiness({ tradeSetup }: { tradeSetup?: { side: Side; amount: b
             ) : acct && !can("signArbitrary") ? (
               <p>Update QoreX to version 0.4.0 or later to sign trade messages.</p>
             ) : (
-              <p role="status">{qx.error ? "Unlock QoreX and reconnect to verify your account." : "Checking your QoreX account…"}</p>
+              <p role="status">{qx.isFetching ? "Checking your QoreX account…" : "Unlock QoreX and reconnect to verify your account."}</p>
             )}
           </SetupRow>
           <SetupRow title="Add test QOR for fees" {...rowProps(1)}>

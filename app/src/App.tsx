@@ -6,7 +6,7 @@ import { Readiness } from "./components/Readiness";
 import { NewTrade } from "./components/NewTrade";
 import { TradeView, type TradeRoute } from "./components/TradeView";
 import { Blotter } from "./components/Blotter";
-import { Addr } from "./components/ui";
+import { Addr, NativeWalletConnect } from "./components/ui";
 import type { Hex } from "viem";
 
 function useHash() {
@@ -65,6 +65,7 @@ export function App() {
         <div className="wallet-bar">
           <span className="network-label"><i aria-hidden="true" /> Diana testnet</span>
           <ConnectButton showBalance={false} chainStatus="icon" accountStatus="address" />
+          <NativeWalletConnect />
         </div>
       </header>
       <main id="workspace" className="min-w-0" tabIndex={-1}>

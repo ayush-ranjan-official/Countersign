@@ -1,21 +1,60 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatUnits, type Address } from "viem";
 import { useAccount } from "wagmi";
-import { addrUrl, txUrl } from "../lib/config";
-import { qorexAccount, qorexNative } from "../lib/qorex";
+import { addrUrl, CHAIN_ID, txUrl } from "../lib/config";
+import { connectNativeQorex, qorexAccount, qorexNative, type QorexAccount } from "../lib/qorex";
 import type { TxState } from "../lib/tx";
 import type { ReactNode } from "react";
 
-/** The active QoreX account on the native lane (qor1, 0x, coin 60 or 118). Re-read when the EVM account changes. */
+const nativeQorexKey = ["qorex-native"] as const;
+
+/** The active QoreX account, read after an EVM connection or an explicit native connection. */
 export function useQorex() {
-  const { address } = useAccount();
-  return useQuery({
-    queryKey: ["qorex", address],
-    enabled: typeof window !== "undefined" && !!qorexNative(),
+  const { address, chainId, connector, isConnected } = useAccount();
+  const connectedAddress = isConnected && connector?.id === "qorex" && chainId === CHAIN_ID ? address : undefined;
+  const evm = useQuery({
+    queryKey: ["qorex", connectedAddress],
+    enabled: !!connectedAddress,
     retry: false,
-    queryFn: qorexAccount,
+    staleTime: 30_000,
+    queryFn: () => connectedAddress ? qorexAccount(connectedAddress) : null,
   });
+  const native = useQuery<QorexAccount | null>({ queryKey: nativeQorexKey, enabled: false });
+  return { data: connectedAddress ? evm.data : native.data, isFetching: evm.isFetching };
+}
+
+export function NativeWalletConnect() {
+  const { connector, isConnected, isConnecting, isReconnecting } = useAccount();
+  const client = useQueryClient();
+  const { data } = useQorex();
+  const native = useMutation({
+    mutationFn: connectNativeQorex,
+    onSuccess: (account) => client.setQueryData(nativeQorexKey, account),
+  });
+
+  useEffect(() => {
+    const onChange = () => {
+      client.setQueryData(nativeQorexKey, null);
+      void client.invalidateQueries({ queryKey: ["qorex"] });
+    };
+    window.addEventListener("qorex_keystorechange", onChange);
+    return () => window.removeEventListener("qorex_keystorechange", onChange);
+  }, [client]);
+
+  if (!qorexNative() || isConnecting || isReconnecting || (isConnected && connector?.id === "qorex")) return null;
+  return (
+    <div className="copy-control">
+      {data ? (
+        <button className="ghost" type="button" onClick={() => client.setQueryData(nativeQorexKey, null)}>Disconnect native account</button>
+      ) : (
+        <button className="ghost" type="button" disabled={native.isPending} onClick={() => native.mutate()}>
+          {native.isPending ? "Waiting for QoreX…" : "Connect native account"}
+        </button>
+      )}
+      {native.isError && !data && <small role="status">{native.error.message}</small>}
+    </div>
+  );
 }
 
 export const fmtFusd = (v: bigint) => Number(formatUnits(v, 6)).toLocaleString(undefined, { maximumFractionDigits: 6 });

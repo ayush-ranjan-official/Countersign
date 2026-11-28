@@ -7,6 +7,7 @@
  * Countersign passes to the pqcVerify precompile (verified on testnet in spike S-2).
  */
 import { toEvmAddress } from "@qorechain/evm";
+import { getQorexEip1193Provider } from "@qorechain/qorex-rainbowkit";
 import { bytesToHex, ripemd160, sha256, type Address, type Hex } from "viem";
 import { FUSD_DENOM, NATIVE_CHAIN_ID } from "./config";
 
@@ -52,14 +53,31 @@ export interface QorexAccount {
  * The active QoreX account on the native lane. getKey's `algo` is always "secp256k1", so the account kind is
  * derived instead: a coin-118 account's address is RIPEMD160(SHA256(pubKey)); a coin-60 account's is not.
  */
-export async function qorexAccount(): Promise<QorexAccount> {
-  const n = qorexNative();
-  if (!n) throw new Error("QoreX not found: install the QoreX extension and enable testnet");
-  await n.enable(NATIVE_CHAIN_ID);
+async function readNativeAccount(n: QorexNative): Promise<QorexAccount> {
   const key = await n.getKey(NATIVE_CHAIN_ID);
   const evm = toEvmAddress(key.bech32Address) as Address;
   const hash160 = ripemd160(sha256(Uint8Array.from(key.pubKey)));
   return { qor1: key.bech32Address, evm, coin60: evm.toLowerCase() !== hash160.toLowerCase() };
+}
+
+/** Check the wallet's current approval silently before reading its native account. */
+export async function qorexAccount(address: Address): Promise<QorexAccount | null> {
+  const native = qorexNative();
+  const evm = getQorexEip1193Provider();
+  if (!native || !evm) return null;
+  const accounts = await evm.request({ method: "eth_accounts" });
+  const activeAddress: unknown = Array.isArray(accounts) ? accounts[0] : undefined;
+  if (typeof activeAddress !== "string" || activeAddress.toLowerCase() !== address.toLowerCase()) return null;
+  const account = await readNativeAccount(native);
+  return account.evm.toLowerCase() === address.toLowerCase() ? account : null;
+}
+
+/** Native-only accounts connect from an explicit user action. */
+export async function connectNativeQorex(): Promise<QorexAccount> {
+  const native = qorexNative();
+  if (!native) throw new Error("QoreX not found: install the QoreX extension and enable testnet");
+  await native.enable(NATIVE_CHAIN_ID);
+  return readNativeAccount(native);
 }
 
 const b64ToHex = (b64: string): Hex => bytesToHex(Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)));

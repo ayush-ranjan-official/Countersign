@@ -133,6 +133,7 @@ button:disabled { cursor: not-allowed; }
 .convert-controls label { @apply min-w-28; }
 
 .workspace { @apply mx-auto max-w-[70rem] pb-3; }
+.new-trade-workspace { @apply max-w-[36rem]; }
 .page-heading { @apply mb-7 grid gap-1.5; }
 .page-heading h1 { @apply font-display text-[clamp(3.1rem,6.1vw,5.5rem)] leading-[0.94] tracking-[-0.03em]; }
 .page-heading > p:last-child:not(.overline) { @apply mt-1 text-muted; }
@@ -148,18 +149,63 @@ button:disabled { cursor: not-allowed; }
 .exchange-pair div > span, .exchange-pair small { @apply block text-xs text-muted; }
 .exchange-pair strong { @apply block max-w-full font-display text-[clamp(1.8rem,4vw,3.6rem)] leading-[1.03] break-all tabular-nums; }
 .exchange-arrow { @apply font-sans text-2xl text-accent; }
-.exchange-note { @apply mt-5 flex flex-wrap items-baseline justify-between gap-2 border-t border-[#d0ddcc] pt-3 text-xs text-muted; }
-.exchange-note strong { @apply text-ink; }
 
 label { @apply grid gap-1.5 text-sm font-bold text-ink; }
 input, select, textarea { @apply min-h-11 w-full min-w-0 rounded-lg border border-[#cbd5c8] bg-white px-3 py-2 text-sm font-medium text-ink; }
 input[aria-invalid="true"] { @apply border-[#a74233]; }
 textarea { @apply font-mono text-xs; }
 .form { @apply grid gap-3.5; }
-.field-pair { @apply grid gap-3 sm:grid-cols-2; }
 .action-row { @apply flex flex-wrap items-center gap-2.5; }
 .disclosure { @apply border-t border-line pt-2.5 text-sm text-muted; }
 .disclosure summary { @apply w-fit font-bold text-ink; }
+.asset-role.trade-side { @apply grid w-full grid-cols-2; }
+.trade-quote { @apply grid min-w-0 gap-1.5; }
+.trade-amounts { @apply grid min-w-0 gap-2 sm:grid-cols-2; }
+.trade-amount { @apply min-w-0 gap-0 rounded-xl border border-line bg-[#f4f7ef] px-3.5 pt-2.5 pb-1 text-xs; }
+.trade-amount:focus-within { @apply border-accent; }
+.trade-amount-entry { @apply flex min-w-0 items-center gap-2; }
+.trade-amount-entry input {
+  @apply min-h-11 rounded-none border-0 bg-transparent p-0 font-display text-4xl leading-none tabular-nums;
+}
+.trade-amount-entry input:focus-visible { outline-offset: -2px; }
+.trade-amount-entry > span { @apply shrink-0 text-xs font-extrabold text-muted; }
+.trade-exchange-summary {
+  @apply text-sm font-extrabold text-accent tabular-nums;
+  overflow-wrap: anywhere;
+}
+.stack > .trade-exchange-summary { @apply rounded-lg border border-line bg-[#f4f7ef] px-3 py-2.5; }
+.deadline-label { @apply mt-3 inline-block; }
+.deadline-value { @apply float-right mt-3 font-extrabold text-accent tabular-nums; }
+.trade-deadline[open] .deadline-preview { display: none; }
+.deadline-slider {
+  @apply block min-h-11 cursor-pointer appearance-none border-0 bg-transparent p-0;
+  --deadline-track: linear-gradient(to right, var(--color-accent) var(--deadline-progress), #dce5d8 var(--deadline-progress));
+}
+.deadline-slider::-webkit-slider-runnable-track { height: 4px; border-radius: 999px; background: var(--deadline-track); }
+.deadline-slider::-moz-range-track { height: 4px; border-radius: 999px; background: var(--deadline-track); }
+.deadline-slider::-webkit-slider-thumb {
+  appearance: none;
+  margin-top: -7px;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--color-accent);
+  border-radius: 50%;
+  background: white;
+}
+.deadline-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-accent);
+  border-radius: 50%;
+  background: white;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .deadline-slider::-webkit-slider-thumb { transition: transform 120ms var(--feedback); }
+  .deadline-slider::-moz-range-thumb { transition: transform 120ms var(--feedback); }
+  .deadline-slider:active::-webkit-slider-thumb { transform: scale(1.15); }
+  .deadline-slider:active::-moz-range-thumb { transform: scale(1.15); }
+}
+.deadline-limits { @apply -mt-1 flex justify-between text-xs tabular-nums; }
 .network-details { @apply grid gap-2 text-sm; }
 .network-details > div { @apply flex flex-wrap justify-between gap-x-4 gap-y-0.5; }
 .network-details dt { @apply text-muted; }

@@ -254,3 +254,8 @@ Commits written with the AI carry a `Co-Authored-By: Claude` trailer.
 - **Asked:** Explain what each setup step means and give users step-by-step instructions, copyable values, and commands within the checklist.
 - **Codex:** Made all four rows expandable, with the current step open by default. Added QoreX, Diana faucet, signing-key, and buyer/seller guidance. Reused existing copy controls and added optional read-only Foundry checks for balance and key status.
 - **Verified:** Exercised mouse and keyboard expansion, checked the two asset paths and prerequisite gating, and verified that long commands fit the mobile view. Browser checks did not submit testnet transactions.
+
+### New Trade form feedback (28 Nov 2026)
+- **Asked:** Center the proposal form, remove its page heading, replace the exchange sidebar with compact totals, preserve the incoming Buy or Sell selection with in-form switching, and use a 1–72 hour deadline slider.
+- **Codex:** Updated `app/src/components/NewTrade.tsx` and `app/src/styles.css` on `ui-redesign`. The form and review now display the same computed total, and the slider defaults to 24 hours.
+- **Verified:** A temporary browser regression script failed against the old form and passed after the change. Checked desktop and narrow layouts, then used Computer Use in Brave to verify the QoreX-connected review and signature prompt on Diana. Dismissed the prompt before signing. Typecheck and build passed. Foundry was unavailable on this host.

@@ -68,7 +68,6 @@ export function App() {
           ))}
         </nav>
         <div className="wallet-bar">
-          <span className="network-label"><i aria-hidden="true" /> Diana testnet</span>
           <ConnectButton showBalance={false} chainStatus="icon" accountStatus="address" />
           <NativeWalletConnect />
         </div>

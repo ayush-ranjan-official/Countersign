@@ -70,8 +70,12 @@ button:disabled { cursor: not-allowed; }
 .top nav a { @apply rounded-md px-3 py-2 text-sm font-bold text-muted hover:bg-[#e9ede2] hover:text-ink; }
 .top nav a[aria-current="page"] { @apply bg-[#e6ecdf] text-ink; }
 .wallet-bar { @apply flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3; }
-.network-label { @apply hidden items-center gap-2 whitespace-nowrap text-xs font-bold text-muted lg:inline-flex; }
-.network-label i { @apply size-1.5 rounded-full bg-[#4d8058]; }
+.wallet-toast {
+  @apply fixed bottom-5 left-1/2 z-[100] flex w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 items-start gap-3 rounded-xl border border-line bg-surface px-4 py-3 text-sm shadow-lg;
+  overflow-wrap: anywhere;
+}
+.wallet-toast-title { @apply font-extrabold text-ink; }
+.wallet-toast-close { @apply ml-auto grid size-8 shrink-0 place-items-center rounded-md text-xl leading-none text-muted hover:bg-paper; }
 .site-footer { @apply my-5 flex flex-wrap items-center justify-between gap-x-5 gap-y-1 border-t border-line py-4 text-xs text-muted; }
 .site-footer a { @apply underline decoration-line underline-offset-3 hover:decoration-accent; }
 
@@ -233,6 +237,15 @@ textarea { @apply font-mono text-xs; }
   transition: background-color 140ms var(--feedback), border-color 140ms var(--feedback), transform 120ms var(--feedback);
 }
 .button.primary, button.primary { @apply border-accent bg-accent text-white; }
+.landing-cta > .button.primary,
+.app button[data-testid="rk-connect-button"] {
+  border: 1px solid #163d2e;
+  border-radius: .75rem;
+  background: linear-gradient(180deg, #246249, #1b4d39);
+  box-shadow: 0 1px 2px rgb(10 28 21 / .28), 0 6px 16px -4px rgb(27 77 57 / .35), inset 0 1px rgb(255 255 255 / .18);
+  color: white;
+  font-weight: 600;
+}
 button:disabled { opacity: .55; }
 .button:active, button.primary:active:not(:disabled), button.ghost:active:not(:disabled) { transform: scale(.98); }
 button.link, .text-link, .addr { @apply text-accent underline decoration-[#afc2ad] underline-offset-3; }
@@ -263,6 +276,10 @@ button.link, .text-link, .addr { @apply text-accent underline decoration-[#afc2a
 @media (hover: hover) and (pointer: fine) {
   .button:hover, button.ghost:hover:not(:disabled) { border-color: #6d8d73; }
   .button.primary:hover, button.primary:hover:not(:disabled) { background: #1c4736; }
+  .landing-cta > .button.primary:hover,
+  .app button[data-testid="rk-connect-button"]:hover {
+    background: linear-gradient(180deg, #246249, #163d2e);
+  }
   .asset-role button:not([aria-pressed="true"]):hover { background: #f2f6ee; }
 }
 

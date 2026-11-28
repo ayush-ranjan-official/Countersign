@@ -142,12 +142,6 @@ body:has(.app[data-page="landing"]) { background: #fafbf9; }
   font-weight: 600;
 }
 
-.landing-cta > .button.primary {
-  border-color: #163d2e;
-  background: linear-gradient(180deg, #246249, var(--hero-forest));
-  box-shadow: 0 1px 2px rgb(10 28 21 / .28), 0 6px 16px -4px rgb(27 77 57 / .35), inset 0 1px rgb(255 255 255 / .18);
-}
-
 .landing-cta > .ghost {
   color: var(--hero-ink);
   background: rgb(255 255 255 / .95);

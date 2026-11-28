@@ -307,3 +307,12 @@ Commits written with the AI carry a `Co-Authored-By: Claude` trailer.
 - **Asked:** Make the landing and Overview navbars uniform.
 - **Codex:** Made the existing application header and wallet controls available on both routes and shared the frosted styling and responsive gutters.
 - **Verified:** Compared the header's links, wallet controls, styles, and position across four viewport widths. Checked that the wordmark returns to the landing page and Overview remains a separate route.
+
+### Connect Wallet button styling (28 Nov 2026)
+- **Asked:** Give Connect Wallet the same depth as the landing page's Get started button.
+- **Codex:** Shared the gradient, border, highlights, and shadow across both buttons.
+- **Verified:** Compared their computed styles on Landing and Overview and opened the existing wallet picker.
+
+### Wallet notification (28 Nov 2026)
+- **Asked:** Remove the navbar testnet label and show native connection errors as an Emil-style toast.
+- **Codex:** Replaced the inline error with a dismissible, reduced-motion-aware toast at the bottom of the viewport.

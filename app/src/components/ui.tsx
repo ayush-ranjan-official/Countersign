@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { formatUnits, type Address } from "viem";
 import { useAccount } from "wagmi";
 import { addrUrl, CHAIN_ID, txUrl } from "../lib/config";
@@ -28,10 +30,18 @@ export function NativeWalletConnect() {
   const { connector, isConnected, isConnecting, isReconnecting } = useAccount();
   const client = useQueryClient();
   const { data } = useQorex();
+  const reduceMotion = useReducedMotion();
   const native = useMutation({
     mutationFn: connectNativeQorex,
     onSuccess: (account) => client.setQueryData(nativeQorexKey, account),
   });
+  const { error, reset } = native;
+
+  useEffect(() => {
+    if (!error) return;
+    const timeout = window.setTimeout(reset, 6000);
+    return () => window.clearTimeout(timeout);
+  }, [error, reset]);
 
   useEffect(() => {
     const onChange = () => {
@@ -52,7 +62,24 @@ export function NativeWalletConnect() {
           {native.isPending ? "Waiting for QoreX…" : "Connect native account"}
         </button>
       )}
-      {native.isError && !data && <small role="status">{native.error.message}</small>}
+      {createPortal(
+        <AnimatePresence>
+          {error && !data && (
+            <motion.div className="wallet-toast"
+              initial={{ opacity: 0, y: reduceMotion ? 0 : "100%" }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: reduceMotion ? 0 : "100%" }}
+              transition={{ duration: reduceMotion ? 0.12 : 0.4, ease: "easeInOut" }}>
+              <div role="status">
+                <p className="wallet-toast-title">Couldn’t connect native account</p>
+                <p className="muted">{error.message}</p>
+              </div>
+              <button className="wallet-toast-close" type="button" onClick={reset} aria-label="Dismiss wallet notification">×</button>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
     </div>
   );
 }

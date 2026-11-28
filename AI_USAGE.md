@@ -269,3 +269,16 @@ Commits written with the AI carry a `Co-Authored-By: Claude` trailer.
 - **Asked:** Anchor the footer at the bottom of the page.
 - **Codex:** Made the shared app layout fill the viewport and let the main content take up available space.
 - **Verified:** Checked matching footer positions on short desktop routes at 1470×768 and confirmed that the footer follows the content on a scrollable mobile page.
+
+### Pale sage coin refraction trial (28 Nov 2026)
+- **Asked:** Try the page's pale sage palette in the coin refraction for visual review.
+- **Codex:** Reused the visible gradient palette in the transmission shader while keeping the grain on the visible background.
+- **Verified:** Captured the Overview at 1470×768 and checked WebGL samples from both shader passes at three animation times. Their colors matched within the visible grain.
+- **User review:** Preferred the previous emerald refraction because it looked better than the pale sage trial. Restored the earlier palette.
+
+### Countersign coin emblem (28 Nov 2026)
+- **Asked:** Replace the Bitcoin emblem with the centered Countersign bands and keep the existing crystal appearance.
+- **Codex:** Extruded the two slanted bands as a beveled crystal relief on both faces. Updated the CSS fallback to show the same mark.
+- **Verified:** Captured the WebGL coin at 1470×768, checked the centered two-band geometry and the restored palette, and forced the fallback to verify its emblem.
+- **Follow-up:** Raised the bands from 0.068 to 0.082 scene units. Browser geometry checks confirmed the extra depth stays below the rim.
+- **Size adjustment:** Enlarged the bands about 8% across the coin face and scaled the fallback to match. Browser checks confirmed the centered mark retains its relief depth and rim clearance.

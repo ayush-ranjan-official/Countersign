@@ -12,7 +12,7 @@ export const COIN_CONFIG = {
   innerHalfDepth: 0.128,      // Half-thickness at flat recessed center
   rimCrownHalfDepth: 0.214,   // Half-thickness at highest rim crown
   edgeHalfDepth: 0.156,       // Half-thickness where vertical flutes span
-  logoMaxRadius: 1.08,        // Max fit radius for centered emblems
+  logoMaxRadius: 1.12,        // Max fit radius for the centered emblem
   logoBaseZ: 0.129            // Flush mount Z-offset on both inner faces
 };
 
@@ -401,9 +401,9 @@ function normalizeEmblemGeometry(geometry: THREE.BufferGeometry, targetRadius = 
   }
   const scale = targetRadius / Math.max(maxR, maxDim * 0.5);
 
-  // Scale XY uniformly; keep Z relief crisp and well within rim protection height
+  // Scale XY uniformly and leave a small clearance between the raised emblem and the rim.
   const currentDepth = Math.max(size.z, 0.001);
-  const targetDepth = 0.068;
+  const targetDepth = COIN_CONFIG.rimCrownHalfDepth - COIN_CONFIG.logoBaseZ - 0.003;
   const zScale = Math.min(scale, targetDepth / currentDepth);
 
   geometry.scale(scale, scale, zScale);
@@ -412,77 +412,28 @@ function normalizeEmblemGeometry(geometry: THREE.BufferGeometry, targetRadius = 
   return geometry;
 }
 
-/**
- * Preset 1: Iconic tilted Bitcoin (₿) sculpted as crisp beveled 3D crystal relief.
- */
-export function buildBitcoinGeometry() {
-  const shape = new THREE.Shape();
+/** Countersign's two bands, extruded with the coin's existing crystal bevel. */
+export function buildCountersignGeometry() {
+  const rise = Math.tan(22 * Math.PI / 180);
+  const bandHeight = 0.5;
 
-  // Outer contour of authentic Bitcoin ₿ (CCW, Y-up)
-  shape.moveTo(-0.44, -0.46);
-  shape.lineTo(-0.20, -0.46);
-  shape.lineTo(-0.20, -0.68);
-  shape.lineTo(-0.07, -0.68);
-  shape.lineTo(-0.07, -0.46);
-  shape.lineTo(0.04, -0.46);
-  shape.lineTo(0.04, -0.68);
-  shape.lineTo(0.17, -0.68);
-  shape.lineTo(0.17, -0.45);
+  // The upper band is longer. Both share the same left edge and slope.
+  const bands = [[1.4, 0.7], [1, 0]].map(([width, bottom]) => {
+    const shape = new THREE.Shape();
+    shape.moveTo(0, bottom);
+    shape.lineTo(width, bottom + width * rise);
+    shape.lineTo(width, bottom + width * rise + bandHeight);
+    shape.lineTo(0, bottom + bandHeight);
+    shape.closePath();
+    return shape;
+  });
 
-  // Lower outer bowl (fuller curve)
-  shape.bezierCurveTo(0.40, -0.45, 0.51, -0.35, 0.51, -0.21);
-  shape.bezierCurveTo(0.51, -0.06, 0.41, 0.01, 0.26, 0.03);
-
-  // Upper outer bowl
-  shape.bezierCurveTo(0.39, 0.07, 0.45, 0.14, 0.45, 0.25);
-  shape.bezierCurveTo(0.45, 0.39, 0.35, 0.45, 0.17, 0.45);
-
-  // Top twin stems & classic Bitcoin left serif
-  shape.lineTo(0.17, 0.68);
-  shape.lineTo(0.04, 0.68);
-  shape.lineTo(0.04, 0.46);
-  shape.lineTo(-0.07, 0.46);
-  shape.lineTo(-0.07, 0.68);
-  shape.lineTo(-0.20, 0.68);
-  shape.lineTo(-0.20, 0.46);
-  shape.lineTo(-0.44, 0.46);
-  shape.lineTo(-0.44, 0.34);
-  shape.lineTo(-0.32, 0.34);
-  shape.lineTo(-0.32, -0.34);
-  shape.lineTo(-0.44, -0.34);
-  shape.closePath();
-
-  // Upper inner D-shaped counter hole (CW)
-  const upperHole = new THREE.Path();
-  upperHole.moveTo(-0.14, 0.33);
-  upperHole.lineTo(0.05, 0.33);
-  upperHole.bezierCurveTo(0.19, 0.33, 0.25, 0.29, 0.25, 0.21);
-  upperHole.bezierCurveTo(0.25, 0.13, 0.19, 0.09, 0.05, 0.09);
-  upperHole.lineTo(-0.14, 0.09);
-  upperHole.closePath();
-  shape.holes.push(upperHole);
-
-  // Lower inner D-shaped counter hole (CW)
-  const lowerHole = new THREE.Path();
-  lowerHole.moveTo(-0.14, -0.06);
-  lowerHole.lineTo(0.08, -0.06);
-  lowerHole.bezierCurveTo(0.23, -0.06, 0.30, -0.11, 0.30, -0.195);
-  lowerHole.bezierCurveTo(0.30, -0.28, 0.23, -0.33, 0.08, -0.33);
-  lowerHole.lineTo(-0.14, -0.33);
-  lowerHole.closePath();
-  shape.holes.push(lowerHole);
-
-  const geo = new THREE.ExtrudeGeometry(shape, {
-    depth: 0.046,
+  const geometry = new THREE.ExtrudeGeometry(bands, {
+    depth: 0.052,
     bevelEnabled: true,
     bevelThickness: 0.020,
     bevelSize: 0.015,
-    bevelOffset: 0,
     bevelSegments: 4,
-    curveSegments: 36
   });
-
-  // Iconic 14-degree clockwise tilt
-  geo.rotateZ(-14 * (Math.PI / 180));
-  return normalizeEmblemGeometry(geo, 1.04);
+  return normalizeEmblemGeometry(geometry);
 }

@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import {
-  buildBitcoinGeometry, COIN_CONFIG, createCrystalCoinGeometry, createRefractionBackdrop, createStudioEnvironment,
+  buildCountersignGeometry, COIN_CONFIG, createCrystalCoinGeometry, createRefractionBackdrop, createStudioEnvironment,
 } from "./readinessCoinOptics";
 
 export function createReadinessCoin(canvas: HTMLCanvasElement, stage: HTMLDivElement, onLost: () => void) {
@@ -45,7 +45,7 @@ export function createReadinessCoin(canvas: HTMLCanvasElement, stage: HTMLDivEle
   });
 
   const coinGeometry = createCrystalCoinGeometry();
-  const logoGeometry = buildBitcoinGeometry();
+  const logoGeometry = buildCountersignGeometry();
   const frontEmblem = new THREE.Mesh(logoGeometry, logoCrystalMaterial);
   frontEmblem.position.z = COIN_CONFIG.logoBaseZ;
   const backEmblem = new THREE.Mesh(logoGeometry, logoCrystalMaterial);

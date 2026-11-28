@@ -282,3 +282,28 @@ Commits written with the AI carry a `Co-Authored-By: Claude` trailer.
 - **Verified:** Captured the WebGL coin at 1470×768, checked the centered two-band geometry and the restored palette, and forced the fallback to verify its emblem.
 - **Follow-up:** Raised the bands from 0.068 to 0.082 scene units. Browser geometry checks confirmed the extra depth stays below the rim.
 - **Size adjustment:** Enlarged the bands about 8% across the coin face and scaled the fallback to match. Browser checks confirmed the centered mark retains its relief depth and rim clearance.
+
+### Landing page and New Trade walkthrough (28 Nov 2026)
+- **Asked:** Create a separate landing page with a centered, animated New Trade walkthrough. Play it once when visible, provide Replay as its only control, and open the setup checklist from the CTA.
+- **Codex:** Added the landing at `/#/` and moved the setup checklist to `/#/overview`. Reused the New Trade form, totals calculation, and review in a sample-only playback that ends before signing.
+- **Verified:** Checked desktop and mobile playback, the viewport trigger, replay, review, CTA navigation, and absence of trade RPC calls during the demo. Reran the New Trade buyer/seller, amount, and keyboard slider checks. Typecheck and production build passed.
+
+### Landing hero reference implementation (28 Nov 2026)
+- **Asked:** Replace the current landing UI using the supplied hero code and leave out the subsequent sections.
+- **Codex:** Adapted the atmospheric backdrop, typography, CTAs, and three-pane workbench to React. Kept the shared New Trade form and review, viewport autoplay, and Replay. The supporting panels use illustrative data.
+- **Verified:** Checked the desktop and mobile layouts, autoplay through review, replay, setup CTA, and the live New Trade route. Typecheck and production build passed.
+
+### Landing hero feedback (28 Nov 2026)
+- **Asked:** Remove three labels, reuse the Overview greens in the hero mist, smooth the demo slider without an outline, and start review with Technical details expanded.
+- **Codex:** Kept the fluted texture and workbench, matched the visible Overview palette, and animated the demonstration deadline continuously. The expanded demo review uses an illustrative trade ID and signing message.
+- **Verified:** Captured the hero and review at 1470×768, measured intermediate slider positions with no outline, and checked autoplay, Replay, mobile layout, and CTA routing. Typecheck and production build passed.
+
+### Frosted landing navbar and mist motion (28 Nov 2026)
+- **Asked:** Combine sage corner washes with a frosted navbar and give the lower mist a subtle up-and-down movement.
+- **Codex:** Extended the sage wash behind the navbar and added two counter-moving layers to the lower fluted pattern. The layers stay still when reduced motion is enabled.
+- **Verified:** Inspected desktop and mobile previews and measured opposite vertical motion and the reduced-motion fallback in the browser. Typecheck and build passed.
+
+### Shared navigation header (28 Nov 2026)
+- **Asked:** Make the landing and Overview navbars uniform.
+- **Codex:** Made the existing application header and wallet controls available on both routes and shared the frosted styling and responsive gutters.
+- **Verified:** Compared the header's links, wallet controls, styles, and position across four viewport widths. Checked that the wordmark returns to the landing page and Overview remains a separate route.

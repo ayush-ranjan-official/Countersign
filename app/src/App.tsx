@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { DEPLOYMENT } from "./lib/config";
 import { decodeTerms } from "./lib/terms";
+import { Landing } from "./components/Landing";
 import { Readiness } from "./components/Readiness";
 import { NewTrade } from "./components/NewTrade";
 import { TradeView, type TradeRoute } from "./components/TradeView";
@@ -19,7 +20,7 @@ function useHash() {
   return h;
 }
 
-function route(hash: string): { page: "ready" | "new" | "blotter"; side: "seller" | "buyer" } | { page: "trade"; trade: TradeRoute } | { page: "error"; error: string } {
+function route(hash: string): { page: "landing" | "ready" | "new" | "blotter"; side: "seller" | "buyer" } | { page: "trade"; trade: TradeRoute } | { page: "error"; error: string } {
   const [path = "", query = ""] = hash.replace(/^#/, "").split("?");
   const q = new URLSearchParams(query);
   const relay = { relayAffirm: q.get("affirm") ?? undefined, relayApprove: q.get("approve") ?? undefined };
@@ -32,6 +33,7 @@ function route(hash: string): { page: "ready" | "new" | "blotter"; side: "seller
   }
   if (/^\/trade\/0x[0-9a-fA-F]{64}$/.test(path)) return { page: "trade", trade: { id: path.slice(7) as Hex, ...relay } };
   const side = q.get("side") === "buyer" ? "buyer" : "seller";
+  if (!path || path === "/") return { page: "landing", side };
   if (path === "/new") return { page: "new", side };
   if (path === "/blotter") return { page: "blotter", side };
   return { page: "ready", side };
@@ -40,8 +42,11 @@ function route(hash: string): { page: "ready" | "new" | "blotter"; side: "seller
 export function App() {
   const hash = useHash();
   const r = route(hash);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [r.page]);
   const nav = [
-    ["ready", "#/", "Overview"],
+    ["ready", "#/overview", "Overview"],
     ["new", "#/new", "New trade"],
     ["blotter", "#/blotter", "Activity"],
   ] as const;
@@ -69,6 +74,7 @@ export function App() {
         </div>
       </header>
       <main id="workspace" className="min-w-0" tabIndex={-1}>
+        {r.page === "landing" && <Landing />}
         {r.page === "ready" && <Readiness />}
         {r.page === "new" && <NewTrade key={r.side} initialSide={r.side} />}
         {r.page === "blotter" && <Blotter />}

@@ -33,10 +33,26 @@ button, summary { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
 :focus-visible { outline: 2px solid #45735a; outline-offset: 4px; }
 
-.app { @apply mx-auto flex min-h-dvh max-w-[82rem] flex-col px-4 sm:px-7 lg:px-9; }
+.app {
+  @apply mx-auto flex min-h-dvh max-w-[82rem] flex-col;
+  --app-gutter: 1rem;
+  padding-inline: var(--app-gutter);
+}
+@media (width >= 40rem) { .app { --app-gutter: 1.75rem; } }
+@media (width >= 64rem) { .app { --app-gutter: 2.25rem; } }
 .app > main { @apply flex-1; }
 .skip-link { @apply fixed top-3 left-3 z-50 -translate-y-[150%] rounded-lg bg-surface px-4 py-2 font-bold focus:translate-y-0; }
-.top { @apply mb-5 flex flex-wrap items-center justify-between gap-x-5 gap-y-3 border-b border-line py-4 sm:mb-7 sm:py-5; }
+.top {
+  @apply mt-3 mb-5 flex flex-wrap items-center justify-between gap-x-5 gap-y-3 sm:mb-7;
+  padding: .85rem clamp(1rem, 2vw, 1.5rem);
+  border: 1px solid rgb(255 255 255 / .76);
+  border-bottom-color: rgb(27 77 57 / .12);
+  border-radius: .875rem;
+  background: linear-gradient(180deg, rgb(255 255 255 / .7), rgb(255 255 255 / .42));
+  box-shadow: 0 3px 14px rgb(27 77 57 / .06), inset 0 1px rgb(255 255 255 / .7);
+  backdrop-filter: blur(14px) saturate(1.12);
+  font-family: var(--font-sans);
+}
 .brand { @apply inline-flex items-center gap-2.5 text-xl font-extrabold tracking-[-0.055em] sm:text-[1.45rem]; }
 .wordmark-symbol { @apply relative block size-7 rounded-[5px] bg-forest; }
 .wordmark-symbol::before, .wordmark-symbol::after {
@@ -53,7 +69,7 @@ button:disabled { cursor: not-allowed; }
 .top nav { @apply order-last flex w-full min-w-0 items-center gap-1 sm:order-none sm:w-auto; }
 .top nav a { @apply rounded-md px-3 py-2 text-sm font-bold text-muted hover:bg-[#e9ede2] hover:text-ink; }
 .top nav a[aria-current="page"] { @apply bg-[#e6ecdf] text-ink; }
-.wallet-bar { @apply flex items-center gap-3; }
+.wallet-bar { @apply flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3; }
 .network-label { @apply hidden items-center gap-2 whitespace-nowrap text-xs font-bold text-muted lg:inline-flex; }
 .network-label i { @apply size-1.5 rounded-full bg-[#4d8058]; }
 .site-footer { @apply my-5 flex flex-wrap items-center justify-between gap-x-5 gap-y-1 border-t border-line py-4 text-xs text-muted; }
